@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Dallas GC Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f2f5;--surface:#fff;--surface2:#f8f9fb;
+  --border:#e4e6ea;--border2:#d1d5db;
+  --text:#111827;--muted:#6b7280;--light:#9ca3af;
+  --accent:#2563eb;--accent-light:#eff6ff;
+  --green:#059669;--green-bg:#ecfdf5;--green-border:#a7f3d0;
+  --amber:#d97706;--amber-bg:#fffbeb;
+  --orange:#c2410c;--orange-bg:#fff7ed;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;
+  --radius:10px;--radius-sm:7px;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5}
+
+/* Header */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700}
+.brand-title{font-size:15px;font-weight:700}
+.brand-sub{font-size:11px;color:var(--muted)}
+.live-badge{display:flex;align-items:center;gap:5px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:999px;padding:3px 10px;font-size:11px;color:#065f46}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Date range bar */
+.date-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.date-bar label{font-size:12px;font-weight:500;color:var(--muted)}
+.date-bar input[type=date]{font-family:'Inter';font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;color:var(--text);background:var(--surface)}
+.date-bar input[type=date]:focus{outline:none;border-color:var(--accent)}
+.quick-dates{display:flex;gap:4px}
+.qd{background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:4px 9px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);font-family:'Inter'}
+.qd:hover,.qd.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+.date-stats{margin-left:auto;font-size:11px;color:var(--muted);display:flex;gap:12px}
+.date-stats b{color:var(--text)}
+
+/* Tabs */
+.tab-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;position:sticky;top:58px;z-index:90}
+.tnav{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);font-family:'Inter';font-size:13px;font-weight:500;padding:10px 16px;cursor:pointer;margin-bottom:-1px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tnav:hover{color:var(--text)}
+.tnav.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tbadge{background:#e5e7eb;color:var(--muted);border-radius:999px;padding:1px 6px;font-size:10px}
+.tnav.on .tbadge{background:var(--accent-light);color:var(--accent)}
+
+main{padding:18px 24px;max-width:1500px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.on{display:block}
+
+/* KPI cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;border-top:3px solid var(--border);box-shadow:var(--shadow)}
+.kpi.k0{border-top-color:#2563eb}.kpi.k1{border-top-color:#7c3aed}.kpi.k2{border-top-color:#059669}
+.kpi.k3{border-top-color:#d97706}.kpi.k4{border-top-color:#c2410c}.kpi.k5{border-top-color:#0891b2}
+.kpi-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:3px}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.kpi-delta{font-size:10px;margin-top:3px}
+
+/* Two column layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.card-hdr{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.card-hdr span{font-size:11px;color:var(--muted);font-weight:400}
+
+/* Bar rows */
+.bar-row{padding:7px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .1s}
+.bar-row:hover{background:var(--bg)}
+.bar-lbl{font-size:11px;font-weight:500;width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.bar-track{flex:1;background:var(--bg);border-radius:4px;height:7px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.bar-val{font-size:11px;font-weight:600;width:55px;text-align:right;flex-shrink:0}
+
+/* Controls */
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.sw{position:relative;flex:1;min-width:180px}
+.sw input{width:100%;padding:7px 10px 7px 30px;font-family:'Inter';font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);background:var(--surface)}
+.sw input:focus{outline:none;border-color:var(--accent)}
+.sw-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+select{font-family:'Inter';font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);background:var(--surface)}
+select:focus{outline:none;border-color:var(--accent)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 14px;font-size:12px;font-family:'Inter';font-weight:600;cursor:pointer}
+.btn:hover{background:#1d4ed8}.btn-sm{padding:4px 10px;font-size:11px}
+.bg-btn{background:var(--surface);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-family:'Inter';font-weight:500;cursor:pointer}
+.bg-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Table */
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.tcard-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:800px}
+thead th{background:var(--surface2);text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th.sort{cursor:pointer;user-select:none}thead th.sort:hover{color:var(--accent);background:#f0f4ff}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:9px 12px;vertical-align:middle;font-size:12px}
+.tfoot{padding:8px 12px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+
+/* Pills */
+.pill{display:inline-block;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.p-mf{background:#eff6ff;color:#1d4ed8}.p-com{background:#f0fdf4;color:#059669}
+.p-issued{background:#ecfdf5;color:#065f46}.p-review{background:#fffbeb;color:#92400e}
+.zone-high{background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px}
+.zone-med{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px}
+.zone-std{background:var(--surface2);color:var(--muted);border:1px solid var(--border);font-size:9px;padding:2px 7px;border-radius:999px}
+
+/* Month badge */
+.month-badge{font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent-light);color:var(--accent)}
+
+/* GC avatar */
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;background:var(--purple-bg);color:var(--purple);border:1px solid #ddd6fe}
+.alink{color:var(--accent);text-decoration:none}.alink:hover{text-decoration:underline}
+
+/* Side panel */
+.side-panel{position:fixed;right:0;top:58px;width:380px;height:calc(100vh - 58px);background:var(--surface);border-left:1px solid var(--border);box-shadow:-4px 0 20px rgba(0,0,0,.08);z-index:200;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease}
+.side-panel.open{transform:translateX(0)}
+.sp-hdr{background:var(--accent);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+.sp-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:20px;cursor:pointer}
+
+/* Modal */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;padding:20px}
+.mo.show{display:flex}
+.mp{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.fg{margin-bottom:10px}.fg label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+.fg input,.fg textarea,.fg select{width:100%;font-family:'Inter';font-size:13px;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;color:var(--text)}
+.fg input:focus,.fg textarea:focus{outline:none;border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+textarea{resize:vertical;line-height:1.6}
+
+/* Chatbot */
+.chat-layout{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 160px);min-height:500px;gap:0}
+.gc-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column}
+.gc-panel-hdr{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.gc-list{flex:1;overflow-y:auto;padding:6px}
+.gc-card{padding:9px 11px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:3px;transition:all .1s}
+.gc-card:hover{background:var(--bg);border-color:var(--border)}
+.gc-card.active{background:var(--purple-bg);border-color:#ddd6fe}
+.gc-card-name{font-size:12px;font-weight:600;margin-bottom:2px}
+.gc-card-meta{font-size:10px;color:var(--muted)}
+.chat-main{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-left:10px}
+.chat-toolbar{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:8px;max-width:85%}
+.msg.bot{align-self:flex-start}.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.bot-av{background:var(--accent);color:#fff}.user-av{background:var(--purple-bg);color:var(--purple)}
+.bubble{padding:9px 13px;border-radius:10px;font-size:12px;line-height:1.6}
+.bot .bubble{background:var(--surface2);border:1px solid var(--border);border-radius:10px 10px 10px 3px}
+.user .bubble{background:var(--accent);color:#fff;border-radius:10px 10px 3px 10px}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;animation:bounce .9s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+.qr-bar{padding:8px 14px;display:flex;gap:5px;flex-wrap:wrap;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.qr{background:var(--bg);border:1px solid var(--border2);border-radius:999px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);font-family:'Inter';transition:all .1s}
+.qr:hover{border-color:var(--accent);color:var(--accent)}
+.chat-input{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--surface);flex-shrink:0}
+.chat-input textarea{flex:1;font-family:'Inter';font-size:12px;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;resize:none;height:38px;color:var(--text)}
+.chat-input textarea:focus{outline:none;border-color:var(--accent)}
+.empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);gap:8px}
+
+/* Stage badges */
+.stage{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;cursor:pointer}
+.s-new{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+.s-contacted{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.s-replied{background:#f0fdf4;color:#059669;border:1px solid #bbf7d0}
+.s-meeting{background:#fef3c7;color:#d97706;border:1px solid #fde68a}
+.s-qualified{background:var(--purple-bg);color:var(--purple);border:1px solid #ddd6fe}
+.stage-menu{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:500;min-width:170px;overflow:hidden;display:none}
+.stage-opt{padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.stage-opt:hover{background:var(--bg)}
+
+/* How to use */
+.how-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+.step-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.step-row:last-child{border-bottom:none}
+.step-num{min-width:22px;height:22px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+
+@media(max-width:900px){
+  main{padding:10px 12px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .two-col{grid-template-columns:1fr}
+  .tab-nav{padding:0 8px;overflow-x:auto;scrollbar-width:none}
+  .tab-nav::-webkit-scrollbar{display:none}
+  .tnav{padding:8px 10px;font-size:12px;white-space:nowrap}
+  .hdr{padding:0 12px}
+  .hdr .brand-sub{display:none}
+  .date-bar{padding:8px 12px;gap:6px}
+  .quick-dates{overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .quick-dates::-webkit-scrollbar{display:none}
+  .date-stats{display:none}
+  .chat-layout{grid-template-columns:1fr;height:auto}
+  .gc-panel{height:200px;margin-bottom:10px}
+  .chat-main{height:500px}
+  table{font-size:11px}
+  thead th{padding:6px 8px;font-size:9px}
+  tbody td{padding:7px 8px}
+  .side-panel{width:100%;top:auto;bottom:0;height:70vh;transform:translateY(100%);border-radius:14px 14px 0 0}
+  .side-panel.open{transform:translateY(0)}
+  .kpi-val{font-size:20px}
+  .card-hdr{font-size:12px}
+  .ctrl{gap:6px}
+  .ctrl select,.ctrl input{font-size:12px}
+  .tcard-scroll{-webkit-overflow-scrolling:touch}
+  .how-card{padding:12px 14px}
+}
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:7px}
+  .brand-title{font-size:13px}
+  .hdr{height:48px}
+  .tnav{padding:7px 8px;font-size:11px}
+  .tab-nav{top:48px}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">
+    <div class="brand-icon">D</div>
+    <div>
+      <div class="brand-title">Dallas GC Intelligence</div>
+      <div class="brand-sub">Multi-family & Commercial</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="live-badge"><div class="live-dot"></div><span id="live-txt">Loading…</span></div>
+    <button class="bg-btn btn-sm" onclick="exportFirmsCSV()">⬇ Firms</button>
+    <button class="bg-btn btn-sm" onclick="exportContactsCSV()">⬇ Contacts</button>
+    <button class="bg-btn btn-sm" onclick="exportPipelineCSV()">⬇ Pipeline</button>
+  </div>
+</header>
+
+<!-- Date range bar -->
+<div class="date-bar">
+  <label>Date range:</label>
+  <input type="date" id="dr-from" onchange="applyDateRange()">
+  <span style="color:var(--muted);font-size:12px">to</span>
+  <input type="date" id="dr-to" onchange="applyDateRange()">
+  <div class="quick-dates">
+    <button class="qd" onclick="setRange('all')">All time</button>
+    <button class="qd" onclick="setRange('jan')">Jan 26</button>
+    <button class="qd" onclick="setRange('feb')">Feb 26</button>
+    <button class="qd" onclick="setRange('mar')">Mar 26</button>
+    <button class="qd on" onclick="setRange('apr')">Apr 26</button>
+    <button class="qd" onclick="setRange('q1')">Q1 2026</button>
+    <button class="qd" onclick="setRange('ytd')">YTD</button>
+  </div>
+  <div class="date-stats" id="date-stats"></div>
+</div>
+
+<nav class="tab-nav">
+  <button class="tnav on" onclick="setTab('summary',this)">📊 Summary <span class="tbadge" id="tc-sum">—</span></button>
+  <button class="tnav"    onclick="setTab('permits',this)">📋 Permits <span class="tbadge" id="tc-pm">—</span></button>
+  <button class="tnav"    onclick="setTab('gc',this)">🏗 GC Firms <span class="tbadge" id="tc-gc">—</span></button>
+  <button class="tnav"    onclick="setTab('chat',this)">🤖 AI Chatbox <span class="tbadge" id="tc-chat">—</span></button>
+  <button class="tnav"    onclick="setTab('howto',this)">❓ How to use</button>
+</nav>
+
+<!-- Side panel -->
+<div class="side-panel" id="side-panel">
+  <div class="sp-hdr">
+    <span style="color:#fff;font-size:13px;font-weight:600" id="sp-title">GC Profile</span>
+    <button class="sp-close" onclick="closePanel()">×</button>
+  </div>
+  <div id="sp-body" style="padding:14px"></div>
+</div>
+<div id="stage-menu" class="stage-menu"></div>
+
+<main>
+
+<!-- ══ SUMMARY TAB ══ -->
+<div id="tab-summary" class="tab-panel on">
+  <div class="kpi-grid" id="kpi-row"></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Top GCs by job value <span>click to view GC</span></div>
+      <div id="sum-gc-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Priority zones <a href="https://dallas.gov/departments/sustainabledevelopment/planning/Pages/zoning-districts.aspx" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">↗ ref</a></div>
+      <div id="sum-zones"></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Permits by type & month</div>
+      <div id="sum-monthly" style="padding:14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PERMITS TAB ══ -->
+<div id="tab-permits" class="tab-panel">
+  <div class="ctrl">
+    <div class="sw"><span class="sw-icon">⌕</span><input type="text" id="pm-q" placeholder="Search permit #, address, GC…" oninput="applyPermits()"></div>
+    <select id="pm-type" onchange="applyPermits()">
+      <option value="">All types</option>
+      <option value="Multi-Family">Multi-family</option>
+      <option value="Commercial">Commercial</option>
+    </select>
+    <select id="pm-zone" onchange="applyPermits()">
+      <option value="">All zones</option>
+      <option value="priority">⭐ Priority zones</option>
+      <option value="MU-3">MU-3</option>
+      <option value="MF-2">MF-2(A)</option>
+      <option value="PD-830">PD-830</option>
+      <option value="PD-1012">PD-1012</option>
+      <option value="PD-1060">PD-1060</option>
+      <option value="PD-1061">PD-1061</option>
+      <option value="D(A)">D(A)</option>
+      <option value="IM">IM</option>
+    </select>
+    <select id="pm-month" onchange="applyPermits()">
+      <option value="">All months</option>
+      <option value="Jan 2026">Jan 2026</option>
+      <option value="Feb 2026">Feb 2026</option>
+      <option value="Mar 2026">Mar 2026</option>
+      <option value="Apr 2026">Apr 2026</option>
+    </select>
+    <button class="btn btn-sm" onclick="applyPermits()">Search</button>
+    <button class="bg-btn btn-sm" onclick="clearPermits()">Clear</button>
+  </div>
+  <div class="tcard"><div class="tcard-scroll">
+    <table>
+      <thead><tr>
+        <th class="sort" onclick="sortPermits('alt')"     id="sh-alt">Permit # <span id="si-alt"></span></th>
+        <th class="sort" onclick="sortPermits('source')"  id="sh-source">Month <span id="si-source"></span></th>
+        <th>Status</th>
+        <th class="sort" onclick="sortPermits('date')"    id="sh-date">Date issued <span id="si-date">↓</span></th>
+        <th class="sort" onclick="sortPermits('addr')"    id="sh-addr">Building address <span id="si-addr"></span></th>
+        <th class="sort" onclick="sortPermits('type_work')" id="sh-type">Type <span id="si-type"></span></th>
+        <th class="sort" onclick="sortPermits('gc')"      id="sh-gc">GC (LP Business) <span id="si-gc"></span></th>
+        <th class="sort" onclick="sortPermits('job_value_raw')" id="sh-val">Job value <span id="si-val"></span></th>
+        <th class="sort" onclick="sortPermits('sqft_raw')" id="sh-sqft">Sq.ft <span id="si-sqft"></span></th>
+        <th class="sort" onclick="sortPermits('zoning')"  id="sh-zone">Base zoning <a href="https://dallas.gov/departments/sustainabledevelopment/planning/Pages/zoning-districts.aspx" target="_blank" style="color:var(--accent);font-size:9px;text-decoration:none" onclick="event.stopPropagation()">↗</a> <span id="si-zone"></span></th>
+        <th>Purpose</th>
+      </tr></thead>
+      <tbody id="pm-tb"></tbody>
+    </table>
+  </div>
+  <div class="tfoot" id="pm-ft"><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- ══ GC FIRMS TAB ══ -->
+<div id="tab-gc" class="tab-panel">
+
+  <div class="ctrl">
+    <div class="sw"><span class="sw-icon">⌕</span><input type="text" id="gc-q" placeholder="Search GC name, phone, email…" oninput="applyGC()"></div>
+    <select id="gc-type" onchange="applyGC()">
+      <option value="">All types</option>
+      <option value="mf">Multi-family</option>
+      <option value="com">Commercial</option>
+    </select>
+    <select id="gc-contact" onchange="applyGC()">
+      <option value="">All</option>
+      <option value="phone">Has phone</option>
+      <option value="email">Has email</option>
+      <option value="both">Has phone + email</option>
+    </select>
+    <button class="btn btn-sm" onclick="applyGC()">Search</button>
+    <button class="bg-btn btn-sm" onclick="clearGC()">Clear</button>
+  </div>
+  <div class="tcard"><div class="tcard-scroll">
+    <table>
+      <thead><tr>
+        <th></th><th>GC Company (LP Business Name)</th><th>Phone</th><th>License type</th>
+        <th>Email</th><th>Address</th><th>Contact name</th>
+        <th>Permits</th><th>Stage</th><th></th>
+      </tr></thead>
+      <tbody id="gc-tb"></tbody>
+    </table>
+  </div>
+  <div class="tfoot" id="gc-ft"><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- ══ AI CHATBOX TAB ══ -->
+<div id="tab-chat" class="tab-panel">
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:7px 0 9px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--muted);font-weight:500">Stage:</span>
+    <span class="stage s-new" style="cursor:pointer;padding:3px 9px" onclick="filterStage('')">All</span>
+    <span class="stage s-new" style="cursor:pointer;padding:3px 9px" onclick="filterStage('new')">🆕 New</span>
+    <span class="stage s-contacted" style="cursor:pointer;padding:3px 9px" onclick="filterStage('contacted')">📧 Contacted</span>
+    <span class="stage s-replied" style="cursor:pointer;padding:3px 9px" onclick="filterStage('replied')">💬 Replied</span>
+    <span class="stage s-meeting" style="cursor:pointer;padding:3px 9px" onclick="filterStage('meeting')">📅 Meeting</span>
+    <span class="stage s-qualified" style="cursor:pointer;padding:3px 9px" onclick="filterStage('qualified')">✓ Quote</span>
+    <span id="chat-stats" style="margin-left:auto;font-size:11px;color:var(--muted)"></span>
+    <button class="bg-btn btn-sm" onclick="showScript()">📋 Script</button>
+    <button class="bg-btn btn-sm" onclick="exportPipelineCSV()">⬇ Export</button>
+  </div>
+  <div class="chat-layout">
+    <div class="gc-panel">
+      <div class="gc-panel-hdr">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px">GC firms</div>
+        <input type="text" id="chat-search" placeholder="Search…" oninput="renderChatList()"
+          style="width:100%;font-size:11px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;font-family:'Inter'">
+      </div>
+      <div class="gc-list" id="chat-list"></div>
+    </div>
+    <div class="chat-main" id="chat-main">
+      <div class="empty-chat" id="chat-empty">
+        <div style="font-size:32px">💬</div>
+        <div style="font-size:13px;font-weight:500">Select a GC to start outreach</div>
+        <div style="font-size:11px">AI drafts personalised messages using permit data</div>
+      </div>
+      <div id="chat-active" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+        <div class="chat-toolbar">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="av" id="chat-av"></div>
+            <div><div style="font-size:13px;font-weight:600" id="chat-name"></div>
+            <div style="font-size:11px;color:var(--muted)" id="chat-sub"></div></div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="api-key-input" type="password"
+              placeholder="Claude API key (optional)"
+              title="Enter Anthropic API key for real AI responses. Leave blank to use built-in responses."
+              style="font-family:Inter;font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;width:180px;color:var(--text)">
+            <button class="bg-btn btn-sm" onclick="updateChatStage('replied')">💬 Replied</button>
+            <button class="bg-btn btn-sm" onclick="updateChatStage('qualified')">✓ Quote</button>
+            <button class="btn btn-sm" onclick="generateChatEmail()">✉ Email</button>
+          </div>
+        </div>
+        <div class="msgs" id="chat-msgs"></div>
+        <div class="qr-bar" id="chat-qr"></div>
+        <div class="chat-input">
+          <textarea id="chat-input" placeholder="Type message or ask AI…" onkeydown="chatKey(event)"></textarea>
+          <button class="btn" onclick="sendChat()" style="height:38px;padding:0 16px">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HOW TO USE TAB ══ -->
+<div id="tab-howto" class="tab-panel">
+  <div style="max-width:820px;margin:0 auto">
+
+    <div class="how-card" style="border-left:4px solid var(--accent);margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Dallas GC Intelligence Dashboard</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8">Permit monitoring and outreach tool for identifying General Contractors active on multi-family and commercial construction projects in Dallas TX. Data sourced from Dallas City Hall monthly permit reports and the Accela LP Business directory.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+
+      <div class="how-card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">📊 Summary</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">KPI cards · top GCs by job value · priority zones · monthly breakdown.<br><br>Use the <b>date range bar</b> at top to filter by month, quarter or all time.</div>
+      </div>
+
+      <div class="how-card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">📋 Permits</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">All Multi-family + Commercial permits. Filter by type, zone or month.<br><br><span class="zone-high">⭐⭐</span> MU-3, MF-2(A), PD-1012 — highest priority.<br>Click GC name → jumps to GC Firms.</div>
+      </div>
+
+      <div class="how-card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">🏗 GC Firms</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">43 GC firms from Jan–Apr 2026 permits with LP Business contact info.<br><br><b>👤</b> Log estimator, PM, purchasing contacts<br><b>🔍</b> Research via LinkedIn, Google<br><b>✉</b> Draft outreach email<br><br>Filter by multi-family, commercial, or contact availability.</div>
+      </div>
+
+      <div class="how-card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">🤖 AI Chatbox</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8">Select a GC → AI pulls their permit profile.<br><br>Commands: <i>"Draft outreach email"</i> · <i>"Qualification questions"</i> · <i>"LinkedIn message"</i> · <i>"Call script"</i><br><br>Pipeline: New → Contacted → Replied → Meeting → Quote</div>
+      </div>
+
+    </div>
+
+    <div class="how-card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Priority zones</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="padding:10px 12px;background:#fef3c7;border-radius:7px;border:1px solid #fde68a">
+          <div style="font-weight:700;color:#92400e;margin-bottom:4px">⭐⭐ High priority</div>
+          <div style="font-size:12px;color:#92400e;line-height:1.8"><b>MU-3</b> — Mixed use, high density<br><b>MF-2(A)</b> — Multi-family residential<br><b>PD-1012, PD-1060, PD-1061</b> — Large planned multi-family</div>
+        </div>
+        <div style="padding:10px 12px;background:#fff7ed;border-radius:7px;border:1px solid #fed7aa">
+          <div style="font-weight:700;color:#c2410c;margin-bottom:4px">⭐ Medium priority</div>
+          <div style="font-size:12px;color:#c2410c;line-height:1.8"><b>PD-830</b> — Planned mixed residential<br><b>D(A)</b> — Downtown adaptive, dense<br><b>IM</b> — Industrial mixed-use<br><b>IM+PD</b> — Industrial to residential</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="how-card" style="margin-top:12px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Data sources</div>
+      <div style="font-size:12px;color:var(--muted);line-height:2.4">
+        <a href="https://dallascityhall.com/departments/sustainabledevelopment/Pages/Reports.aspx" target="_blank" style="color:var(--accent);text-decoration:none">Dallas City Hall permit reports ↗</a> — Monthly Excel · FY 2025-26 · COM-NEW<br>
+        <a href="https://aca-prod.accela.com/DALLASTX/GeneralProperty/PropertyLookUp.aspx?isLicensee=Y&TabName=APO" target="_blank" style="color:var(--accent);text-decoration:none">Accela LP Business directory ↗</a> — GC contact name · phone · email · address<br>
+        <a href="https://dallas.gov/departments/sustainabledevelopment/planning/Pages/zoning-districts.aspx" target="_blank" style="color:var(--accent);text-decoration:none">Dallas zoning districts reference ↗</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+
+<!-- Email modal -->
+<div class="mo" id="email-modal" onclick="if(event.target===this)closeEmail()">
+<div class="mp">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:600" id="email-title">Draft outreach email</div>
+    <button onclick="closeEmail()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">×</button>
+  </div>
+  <div class="form-row">
+    <div class="fg"><label>Your name</label><input type="text" id="e-name" placeholder="Jane Smith" oninput="rebuildEmail()"></div>
+    <div class="fg"><label>Your title</label><input type="text" id="e-title" placeholder="Sales Manager" oninput="rebuildEmail()"></div>
+    <div class="fg"><label>Your company</label><input type="text" id="e-co" placeholder="Acme Railings Inc." oninput="rebuildEmail()"></div>
+    <div class="fg"><label>Your phone</label><input type="text" id="e-ph" placeholder="(214) 555-0100" oninput="rebuildEmail()"></div>
+  </div>
+  <div class="fg"><label>Your email</label><input type="email" id="e-from" placeholder="jane@acmerailings.com"></div>
+  <div class="form-row">
+    <div class="fg"><label>To — GC firm</label><input type="text" id="e-toname" readonly style="background:#f9fafb;color:var(--muted)"></div>
+    <div class="fg"><label>Recipient email</label><input type="email" id="e-toemail"></div>
+  </div>
+  <div class="fg"><label>Permit reference</label><input type="text" id="e-proj" placeholder="Permit # or project address" oninput="rebuildEmail()"></div>
+  <div class="fg"><label>Body</label><textarea id="e-body" rows="9"></textarea></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="bg-btn" onclick="closeEmail()">Cancel</button>
+    <button class="btn" onclick="sendEmail()">✉ Open in email client</button>
+  </div>
+</div>
+</div>
+
+<!-- Contact form modal -->
+<div class="mo" id="cf-modal" onclick="if(event.target===this)closeCF()">
+<div class="mp" style="max-width:700px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:600" id="cf-title">GC Contact Collection</div>
+    <button onclick="closeCF()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">×</button>
+  </div>
+  <div id="cf-body"></div>
+</div>
+</div>
+
+<!-- Script modal -->
+<div class="mo" id="script-modal" onclick="if(event.target===this)this.classList.remove('show')">
+<div class="mp">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:600">Outreach script — Div 05</div>
+    <button onclick="document.getElementById('script-modal').classList.remove('show')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">×</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px" id="script-content"></div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="btn" onclick="document.getElementById('script-modal').classList.remove('show')">Close</button>
+    <button class="bg-btn" onclick="copyScript()">📋 Copy</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ── ALL VARIABLE DECLARATIONS FIRST ──────────────────────────────────────
+const STAGES      = {new:"New",contacted:"Contacted",replied:"Replied",meeting:"Meeting",qualified:"Quote"};
+const STAGE_BADGE = {new:"s-new",contacted:"s-contacted",replied:"s-replied",meeting:"s-meeting",qualified:"s-qualified"};
+const STAGE_EMOJI = {new:"🆕",contacted:"📧",replied:"💬",meeting:"📅",qualified:"✓"};
+let stageFilter   = '';
+let activeChatGC  = null;
+let chatConvos    = {};
+let pipeline      = {};
+let activeFirm    = null;
+const ini = n => (n||'').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+const now = () => new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const fmt = v => v ? (Number(v)>=1e9?`$${(Number(v)/1e9).toFixed(1)}B`:Number(v)>=1e6?`$${(Number(v)/1e6).toFixed(0)}M`:`$${Number(v).toLocaleString()}`) : '—';
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+const PERMITS = [{"alt": "2407021040_190437220-001", "status": "Issued", "date": "2026-01-20", "addr": "4777 N CENTRAL EXPY, Dallas, TX", "type_work": "Multi-Family", "gc": "WEIS BUILDERS INC", "job_value": "$46,246,802", "job_value_raw": 46246802.0, "sqft": "387,424", "purpose": "MULTI-FAMILY DWELLING", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 1, "source": "Jan 2026", "month": "2026-01"}, {"alt": "COM-NEW-25-000052", "status": "Issued", "date": "2026-01-20", "addr": "8351 CLARK RD, Dallas, TX 75236", "type_work": "Multi-Family", "gc": "NRP CONTRACTORS, LLC", "job_value": "$32,319,152", "job_value_raw": 32319152.0, "sqft": "394,136", "purpose": "Multifamily", "district": "D3", "zoning": "RR", "zone_priority": 0, "mf": 1, "source": "Jan 2026", "month": "2026-01"}, {"alt": "2310191036_185330657-001", "status": "Issued", "date": "2026-02-09", "addr": "8099 WALNUT HILL LN, Dallas, TX", "type_work": "Multi-Family", "gc": "MCRT NORTH TEXAS /MOUNTAIN STATES CONST. LLC", "job_value": "$65,697,842", "job_value_raw": 65697842.0, "sqft": "681,479", "purpose": "Mixed Income Multifamily", "district": "D13", "zoning": "MU-1,PD-804,RR", "zone_priority": 0, "mf": 1, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000265", "status": "Issued", "date": "2026-02-11", "addr": "1255 ANNEX AVE, Dallas, TX 75204", "type_work": "Multi-Family", "gc": "DGM BUILDERS", "job_value": "$880,000", "job_value_raw": 880000.0, "sqft": "12,597", "purpose": "Multifamily", "district": "D2", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 1, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2302281040_176540256-001", "status": "Issued", "date": "2026-02-13", "addr": "8801 OLD HICKORY TRL, Dallas, TX", "type_work": "Multi-Family", "gc": "RAMPART MULTIFAMILY, INC", "job_value": "$38,500,000", "job_value_raw": 38500000.0, "sqft": "32,566", "purpose": "", "district": "D8", "zoning": "IR,MF-2(A),RR", "zone_priority": 2, "mf": 1, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000140", "status": "Issued", "date": "2026-02-24", "addr": "1111 N MADISON AVE, Dallas, TX 75208", "type_work": "Multi-Family", "gc": "SOGNI ITALIANI LLC", "job_value": "$1,100,000", "job_value_raw": 1100000.0, "sqft": "8,816", "purpose": "Multifamily", "district": "D1", "zoning": "PD-830", "zone_priority": 1, "mf": 1, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2504231167_199718022-001", "status": "Issued", "date": "2026-03-04", "addr": "4710 W ILLINOIS AVE, Dallas, TX", "type_work": "Multi-Family", "gc": "", "job_value": "$34,069,000", "job_value_raw": 34068999.96, "sqft": "277,626", "purpose": "MIXED INCOME MULTI-FAMILY", "district": "D3", "zoning": "CR,MF-1(A)", "zone_priority": 0, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000190", "status": "Issued", "date": "2026-03-07", "addr": "419 W 10TH ST, Dallas, TX 75208", "type_work": "Multi-Family", "gc": "ARCADIA BUILDERS", "job_value": "$3,500,000", "job_value_raw": 3500000.0, "sqft": "25,072", "purpose": "Multifamily", "district": "D1", "zoning": "PD-830", "zone_priority": 1, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2408141040_192607183-001", "status": "Issued", "date": "2026-03-12", "addr": "1100 N WALTON WALKER BLVD, Dallas, TX", "type_work": "Multi-Family", "gc": "LOUISIANA ELECTRIC CO INC", "job_value": "$37,760,700", "job_value_raw": 37760700.0, "sqft": "379,442", "purpose": "MULTI-FAMILY DWELLING", "district": "D6", "zoning": "CS,PD-1113,R-7.5(A)", "zone_priority": 0, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000129", "status": "Issued", "date": "2026-03-20", "addr": "2243 LOVEDALE AVE, Dallas, TX 75235", "type_work": "Multi-Family", "gc": "AG CONSTRUCTION GROUP LLC", "job_value": "$1,100,000", "job_value_raw": 1100000.0, "sqft": "12,687", "purpose": "Multifamily", "district": "D2", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-26-000064", "status": "Issued", "date": "2026-03-27", "addr": "4003 RAWLINS ST, Dallas, TX 75219", "type_work": "Multi-Family", "gc": "EVANS SERVICE COMPANY, LLC", "job_value": "$1,322,000", "job_value_raw": 1322000.0, "sqft": "14,491", "purpose": "Multifamily", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2408061163_192456652-001", "status": "Issued", "date": "2026-03-31", "addr": "2142 MAIL AVE, Dallas, TX", "type_work": "Multi-Family", "gc": "BERRYMAN FIRE EQUIPMENT", "job_value": "$0", "job_value_raw": 0.0, "sqft": "", "purpose": "Multifamily", "district": "D2", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 1, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2208261105_173464087-001", "status": "Issued", "date": "2026-04-01", "addr": "4555 TRAVIS ST, Dallas, TX", "type_work": "Multi-Family", "gc": "BALFOUR BEATTY CONSTRUCTION LLC", "job_value": "$391,245,097", "job_value_raw": 391245097.0, "sqft": "1,725,692", "purpose": "MIXED INCOME MULTI-FAMILY", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "2101211137_163309832-001", "status": "Issued", "date": "2026-04-02", "addr": "4263 ROSEWOOD AVE, Dallas, TX", "type_work": "Multi-Family", "gc": "SALFAI LLC", "job_value": "$900,000", "job_value_raw": 900000.0, "sqft": "8,143", "purpose": "MULTI-FAMILY DWELLING", "district": "D2", "zoning": "PD-193", "zone_priority": 0, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "2412231084_194893795-001", "status": "Issued", "date": "2026-04-09", "addr": "6151 ORAM ST, Dallas, TX", "type_work": "Multi-Family", "gc": "JGH, LLC", "job_value": "$1,584,000", "job_value_raw": 1584000.0, "sqft": "11,776", "purpose": "Multifamily", "district": "D14", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000186", "status": "Issued", "date": "2026-04-10", "addr": "5731 RICHMOND AVE, Dallas, TX 75206", "type_work": "Multi-Family", "gc": "MODPLACE BUILDERS LLC", "job_value": "$1,470,600", "job_value_raw": 1470600.0, "sqft": "12,227", "purpose": "Multifamily", "district": "D14", "zoning": "PD-167", "zone_priority": 0, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000087", "status": "Issued", "date": "2026-04-17", "addr": "525 MELBA ST, Dallas, TX 75208", "type_work": "Multi-Family", "gc": "URBANX BUILDERS", "job_value": "$1,300,000", "job_value_raw": 1300000.0, "sqft": "13,895", "purpose": "Multifamily", "district": "D1", "zoning": "PD-830", "zone_priority": 1, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-26-000133", "status": "Issued", "date": "2026-04-28", "addr": "4528 LIVE OAK ST, Dallas, TX 75204", "type_work": "Multi-Family", "gc": "", "job_value": "$550,000", "job_value_raw": 550000.0, "sqft": "8,890", "purpose": "Multifamily", "district": "D2", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 1, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000116", "status": "Issued", "date": "2026-01-02", "addr": "3421 S MERRIFIELD RD, Dallas, TX 75236", "type_work": "Commercial", "gc": "HEMPHILL LLC", "job_value": "$125,000", "job_value_raw": 125000.0, "sqft": "2,500", "purpose": "Tower/antenna for cellular communications", "district": "D3", "zoning": "PD-655 | A(A)", "zone_priority": 0, "mf": 0, "source": "Jan 2026", "month": "2026-01"}, {"alt": "2304111092_177309869-001", "status": "Issued", "date": "2026-01-15", "addr": "2323 N FIELD ST, Dallas, TX", "type_work": "Commercial", "gc": "BALFOUR BEATTY CONSTRUCTION LLC", "job_value": "$441,824,885", "job_value_raw": 441824885.0, "sqft": "1,729,214", "purpose": "Office", "district": "D14", "zoning": "PD-193,PD-582", "zone_priority": 0, "mf": 0, "source": "Jan 2026", "month": "2026-01"}, {"alt": "COM-NEW-25-000111", "status": "Issued", "date": "2026-01-22", "addr": "2924 CEDAR CREST BLVD, Dallas, TX 75203", "type_work": "Commercial", "gc": "JOEL BROWN & CO LLC DBA J.B. & CO LLC", "job_value": "$8,000,000", "job_value_raw": 8000000.0, "sqft": "550,000", "purpose": "Public park, playground or golf course", "district": "D4", "zoning": "CR", "zone_priority": 0, "mf": 0, "source": "Jan 2026", "month": "2026-01"}, {"alt": "2410011149_193508952-001", "status": "Issued", "date": "2026-01-28", "addr": "4468 S HAMPTON RD, Dallas, TX", "type_work": "Commercial", "gc": "GREEN ENERGY ASSOCIATES", "job_value": "$1,500,000", "job_value_raw": 1500000.0, "sqft": "4,268", "purpose": "", "district": "D3", "zoning": "RR", "zone_priority": 0, "mf": 0, "source": "Jan 2026", "month": "2026-01"}, {"alt": "2410291160_194003972-001", "status": "Issued", "date": "2026-01-30", "addr": "2621 DAWSON ST, Dallas, TX", "type_work": "Commercial", "gc": "LTS MANAGED TECHNICAL SERVICES LLC", "job_value": "$1,000,000", "job_value_raw": 1000000.0, "sqft": "864", "purpose": "UTILITY OR GOVERNMENTAL INSTALLATION (OTHER)", "district": "D7", "zoning": "IM", "zone_priority": 1, "mf": 0, "source": "Jan 2026", "month": "2026-01"}, {"alt": "COM-NEW-26-000023", "status": "Issued", "date": "2026-02-04", "addr": "4820 W ILLINOIS AVE, Dallas, TX 75211", "type_work": "Commercial", "gc": "HORIZON GENERAL CONTRACTORS INC", "job_value": "$350,000", "job_value_raw": 350000.0, "sqft": "2,843", "purpose": "", "district": "D1", "zoning": "CR", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000294", "status": "Issued", "date": "2026-02-09", "addr": "100 PAYNE ST, Dallas, TX 75207", "type_work": "Commercial", "gc": "MASTER CODE, INC", "job_value": "$1,500,000", "job_value_raw": 1500000.0, "sqft": "13,400", "purpose": "Private recreation center, club or area", "district": "D6", "zoning": "PD-621", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000301", "status": "Issued", "date": "2026-02-17", "addr": "6524 ALPHA RD, Dallas, TX 75240", "type_work": "Commercial", "gc": "HCBeck, LTD", "job_value": "$100,000", "job_value_raw": 100000.0, "sqft": "5,254", "purpose": "Country club with private membership", "district": "D11", "zoning": "R-1/2ac(A)", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2503041195_198790580-001", "status": "Issued", "date": "2026-02-18", "addr": "480 CAMDEN RD, Dallas, TX 75051", "type_work": "Commercial", "gc": "EVANS GENERAL CONTRACTORS", "job_value": "$15,000,000", "job_value_raw": 15000000.0, "sqft": "260,056", "purpose": "", "district": "D3", "zoning": "IR", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000228", "status": "Issued", "date": "2026-02-19", "addr": "5810 REIGER AVE, Dallas, TX 75214", "type_work": "Commercial", "gc": "EVANS SERVICE COMPANY, LLC", "job_value": "$1,450,000", "job_value_raw": 1450000.0, "sqft": "4,450", "purpose": "Group residential facility", "district": "D14", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000274", "status": "Issued", "date": "2026-02-19", "addr": "2901 BORGER ST, Dallas, TX 75212", "type_work": "Commercial", "gc": "UG CONSTRUCTION LLC DBA CARDINAL CONSTRUCTION", "job_value": "$10,000", "job_value_raw": 10000.0, "sqft": "121", "purpose": "Multifamily", "district": "D6", "zoning": "PD-1081 | PD-1108", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2412131047_194745143-001", "status": "Issued", "date": "2026-02-20", "addr": "5000 MAPLE AVE, Dallas, TX", "type_work": "Commercial", "gc": "TAURUS COMMERCIAL INC.", "job_value": "$2,000,000", "job_value_raw": 2000000.0, "sqft": "3,600", "purpose": "FINANCIAL INSTITUTION WITHOUT DRIVE-IN WINDOW", "district": "D2", "zoning": "PD-193", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000275", "status": "Issued", "date": "2026-02-20", "addr": "3203 PENNSYLVANIA AVE, Dallas, TX 75210", "type_work": "Commercial", "gc": "EVANS SERVICE COMPANY, LLC", "job_value": "$300,000", "job_value_raw": 300000.0, "sqft": "4,000", "purpose": "Church", "district": "D7", "zoning": "PD-595", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2410041101_193580662-001", "status": "Issued", "date": "2026-02-23", "addr": "3838 CROWN SHORE DR, Dallas, TX 75244", "type_work": "Commercial", "gc": "ELECTRIC CITY PLUMBING & HVAC", "job_value": "$7,272,799", "job_value_raw": 7272798.77, "sqft": "123,650", "purpose": "Private or Public School", "district": "D13", "zoning": "PD-675", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2411011020_194053370-001", "status": "Issued", "date": "2026-02-24", "addr": "4544 MCKINNEY AVE, Dallas, TX", "type_work": "Commercial", "gc": "DPR CONSTRUCTION", "job_value": "$135,000,000", "job_value_raw": 135000000.0, "sqft": "626,963", "purpose": "Mixed uses", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "COM-NEW-25-000117", "status": "Issued", "date": "2026-02-26", "addr": "2050 DOWDY FERRY RD, Dallas, TX 75217", "type_work": "Commercial", "gc": "XPERT DESIGN AND CONSTRUCTION", "job_value": "$39,795,100", "job_value_raw": 39795100.0, "sqft": "397,951", "purpose": "Multifamily", "district": "D8", "zoning": "CS | MU-1 | A(A) | R-10(A)", "zone_priority": 0, "mf": 0, "source": "Feb 2026", "month": "2026-02"}, {"alt": "2406271146_190372374-001", "status": "Issued", "date": "2026-03-04", "addr": "6300 HARRY HINES BLVD, Dallas, TX", "type_work": "Commercial", "gc": "MCCARTHY-VAUGHN A JOINT VENTURE", "job_value": "$982,427,060", "job_value_raw": 982427060.0, "sqft": "2,037,082", "purpose": "HOSPITAL", "district": "D2", "zoning": "MU-2", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2406271147_190372379-001", "status": "Issued", "date": "2026-03-04", "addr": "6300 HARRY HINES BLVD, Dallas, TX", "type_work": "Commercial", "gc": "MCCARTHY-VAUGHN A JOINT VENTURE", "job_value": "$1,012,256,794", "job_value_raw": 1012256794.48, "sqft": "1,222,482", "purpose": "HOSPITAL", "district": "D2", "zoning": "MU-2", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2302131128_176281984-001", "status": "Issued", "date": "2026-03-06", "addr": "1919 WOODALL RODGERS FWY, Dallas, TX", "type_work": "Commercial", "gc": "AUSTIN COMMERCIAL LP", "job_value": "$200,000,000", "job_value_raw": 200000000.0, "sqft": "1,119,637", "purpose": "Shell Building", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000127", "status": "Issued", "date": "2026-03-13", "addr": "9715 WALNUT HILL LN, Dallas, TX 75238", "type_work": "Commercial", "gc": "HUB CITY PRODUCTIONS", "job_value": "$2,200,000", "job_value_raw": 2200000.0, "sqft": "7,182", "purpose": "Custom business services", "district": "D10", "zoning": "CR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000241", "status": "Issued", "date": "2026-03-13", "addr": "12500 GREENVILLE AVE, Dallas, TX 75243", "type_work": "Commercial", "gc": "SPINOFF CONSTRUCTION", "job_value": "$635,000", "job_value_raw": 635000.0, "sqft": "7,555", "purpose": "Motor vehicle fueling station", "district": "D10", "zoning": "PD-44 | CR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000252", "status": "Issued", "date": "2026-03-16", "addr": "6770 LA VISTA DR, Dallas, TX 75214", "type_work": "Commercial  - Shell Only", "gc": "CONSTRUCTION CONCEPTS INC", "job_value": "$500,000", "job_value_raw": 500000.0, "sqft": "1,800", "purpose": "Mixed uses", "district": "D9", "zoning": "R-10(A)", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2411251053_194456908-001", "status": "Issued", "date": "2026-03-17", "addr": "8377 CLARK RD, Dallas, TX", "type_work": "Commercial", "gc": "RF & SONS PROPERTIES", "job_value": "$1,500,000", "job_value_raw": 1500000.0, "sqft": "16,183", "purpose": "GEN MERCHANDISE OR FOOD STORE > 3500 SQ. FT.", "district": "D3", "zoning": "RR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000211", "status": "Issued", "date": "2026-03-17", "addr": "9214 BRUTON RD, Dallas, TX 75217", "type_work": "Commercial", "gc": "", "job_value": "$1,011,140", "job_value_raw": 1011140.0, "sqft": "7,778", "purpose": "Vacant Floor Space", "district": "D5", "zoning": "CR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2407241077_190852126-001", "status": "Issued", "date": "2026-03-19", "addr": "2850 DAIRY MILK LN, Dallas, TX", "type_work": "Commercial", "gc": "THE CHRISTMAN COMPANY", "job_value": "$1,781,926", "job_value_raw": 1781926.0, "sqft": "", "purpose": "Commercial motor vehicle parking", "district": "D6", "zoning": "IR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2404021187_188808903-001", "status": "Issued", "date": "2026-03-20", "addr": "1441 W MOCKINGBIRD LN, Dallas, TX 75235", "type_work": "Commercial", "gc": "LONESTAR BUILDERS", "job_value": "$1,100,000", "job_value_raw": 1100000.0, "sqft": "4,189", "purpose": "Car wash", "district": "D2", "zoning": "MU-3", "zone_priority": 2, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000193", "status": "Issued", "date": "2026-03-23", "addr": "6000 LEMMON AVE, Dallas, TX 75209", "type_work": "Commercial", "gc": "RG BRINKMANN COMPANY DBA BRINKMANN CONSTRUCTORS", "job_value": "$26,683,247", "job_value_raw": 26683247.0, "sqft": "109,211", "purpose": "Vehicle display, sales and services", "district": "D13", "zoning": "MF-2(A) | CS | IR", "zone_priority": 2, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000242", "status": "Issued", "date": "2026-03-23", "addr": "650 S R L THORNTON FWY, Dallas, TX 75203", "type_work": "Commercial", "gc": "BLINK ENERGY INSPECTIONS", "job_value": "$1,500,000", "job_value_raw": 1500000.0, "sqft": "", "purpose": "Public park, playground or golf course", "district": "D4", "zoning": "RR | R-7.5(A)", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000204", "status": "Issued", "date": "2026-03-26", "addr": "2719 SOUTHWELL RD, Dallas, TX 75229", "type_work": "Commercial  - Shell Only", "gc": "ACE COMPANIES", "job_value": "$2,500,000", "job_value_raw": 2500000.0, "sqft": "23,984", "purpose": "Office showroom/warehouse", "district": "D6", "zoning": "IR", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000298", "status": "Issued", "date": "2026-03-26", "addr": "1234 ABRAMS RD, Dallas, TX 75214", "type_work": "Commercial", "gc": "EVANS SERVICE COMPANY, LLC", "job_value": "$6,700,000", "job_value_raw": 6700000.0, "sqft": "26,790", "purpose": "Convalecent and nursing homes, hospice care, and related institutions", "district": "D14", "zoning": "MF-2(A)", "zone_priority": 2, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000033", "status": "Issued", "date": "2026-03-27", "addr": "7009 HOLLY HILL DR, Dallas, TX 75231", "type_work": "Commercial", "gc": "VAL GUTIERREZ DESIGN CONSTRUCTION", "job_value": "$595,000", "job_value_raw": 595000.0, "sqft": "4,760", "purpose": "Custom business services", "district": "D13", "zoning": "MU-2", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000168", "status": "Issued", "date": "2026-03-27", "addr": "3407 CANYON BLUFF BLVD, Dallas, TX 75211", "type_work": "Commercial  - Shell Only", "gc": "TEXAS BLUE BONNET CONCRETE INC", "job_value": "$1,000,000", "job_value_raw": 1000000.0, "sqft": "2,328", "purpose": "Restaurant with drive-in or drive-through service", "district": "D1", "zoning": "PD-811", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000195", "status": "Issued", "date": "2026-03-27", "addr": "6000 LEMMON AVE, Dallas, TX 75209", "type_work": "Commercial", "gc": "BLINK ENERGY INSPECTIONS", "job_value": "$3,104,120", "job_value_raw": 3104120.0, "sqft": "12,106", "purpose": "Vehicle display, sales and services", "district": "D13", "zoning": "MF-2(A) | CS | IR", "zone_priority": 2, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2503201043_199071992-001", "status": "Issued", "date": "2026-03-28", "addr": "4640 CROSSTOWN EXPY, Dallas, TX", "type_work": "Commercial", "gc": "J & PD LLC", "job_value": "$600,000", "job_value_raw": 600000.0, "sqft": "3,200", "purpose": "Vacant Floor Space", "district": "D2", "zoning": "CS,MF-2(A)", "zone_priority": 2, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "COM-NEW-25-000174", "status": "Issued", "date": "2026-03-30", "addr": "2314 ARROYO AVE, Dallas, TX 75219", "type_work": "Commercial", "gc": "CREST ELECTRICAL SOLUTIONS", "job_value": "$500,000", "job_value_raw": 500000.0, "sqft": "9,489", "purpose": "Multifamily", "district": "D2", "zoning": "PD-193", "zone_priority": 0, "mf": 0, "source": "Mar 2026", "month": "2026-03"}, {"alt": "2408271180_192873622-001", "status": "Issued", "date": "2026-04-01", "addr": "8625 N STEMMONS FWY, Dallas, TX", "type_work": "Commercial", "gc": "BALFOUR BEATTY CONSTRUCTION LLC", "job_value": "$122,000,000", "job_value_raw": 122000000.0, "sqft": "301,534", "purpose": "OVERNIGHT GENERAL PURPOSE SHELTER", "district": "D6", "zoning": "IR,MU-3,PD-1012", "zone_priority": 2, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000141", "status": "Issued", "date": "2026-04-09", "addr": "238 W 12TH ST, Dallas, TX 75208", "type_work": "Commercial", "gc": "D.F. OSBORNE CONSTRUCTION, INC", "job_value": "$1,400,000", "job_value_raw": 1400000.0, "sqft": "2,421", "purpose": "Motor vehicle fueling station", "district": "D1", "zoning": "PD-316", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-26-000051", "status": "Issued", "date": "2026-04-10", "addr": "5015 TRACY ST, Dallas, TX 75205", "type_work": "Commercial", "gc": "TALLEY-RIGGINS CONSTRUCTION GROUP LLC", "job_value": "$11,959,698", "job_value_raw": 11959698.0, "sqft": "18,287", "purpose": "Financial institution without drive-in window", "district": "D14", "zoning": "PD-193", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000223", "status": "Issued", "date": "2026-04-15", "addr": "1550 W MOCKINGBIRD LN, Dallas, TX 75235", "type_work": "Commercial", "gc": "CLUNE CONSTRUCTION COMPANY, L.P.", "job_value": "$900,000,000", "job_value_raw": 900000000.0, "sqft": "372,517", "purpose": "Local utilities", "district": "D2", "zoning": "MU-3 | PD-1065", "zone_priority": 2, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000262", "status": "Issued", "date": "2026-04-15", "addr": "1000 OAK ST, Dallas, TX 75204", "type_work": "Commercial", "gc": "GORDON HIGHLANDER", "job_value": "$6,995,960", "job_value_raw": 6995960.0, "sqft": "11,938", "purpose": "Restaurant without drive-in or drive-trhough service", "district": "D14", "zoning": "PD-298", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000207", "status": "Issued", "date": "2026-04-16", "addr": "3201 MAIN ST, Dallas, TX 75226", "type_work": "Commercial", "gc": "HCI COMMERCIAL, LLC", "job_value": "$8,967,841", "job_value_raw": 8967841.0, "sqft": "38,946", "purpose": "Multifamily", "district": "D2", "zoning": "PD-269", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000300", "status": "Issued", "date": "2026-04-22", "addr": "212 S BUCKNER BLVD, Dallas, TX 75217", "type_work": "Commercial", "gc": "ROCK STRATEGIC", "job_value": "$2,000,000", "job_value_raw": 2000000.0, "sqft": "2,341", "purpose": "Restaurant with drive-in or drive-through service", "district": "D5", "zoning": "IM", "zone_priority": 1, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000287", "status": "Issued", "date": "2026-04-23", "addr": "9009 SKILLMAN ST, Dallas, TX 75243", "type_work": "Commercial", "gc": "SPINOFF CONSTRUCTION", "job_value": "$635,000", "job_value_raw": 635000.0, "sqft": "7,555", "purpose": "General Merchandise or food store >3,500 but < 100,000", "district": "D10", "zoning": "MC-1", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000302", "status": "Issued", "date": "2026-04-23", "addr": "4331 COMMUNICATIONS DR, #A, Dallas, TX 75211", "type_work": "Commercial  - Shell Only", "gc": "GORDON HIGHLANDER", "job_value": "$7,906,876", "job_value_raw": 7906876.0, "sqft": "207,189", "purpose": "Warehouse", "district": "D1", "zoning": "PD-683 | IM", "zone_priority": 1, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-26-000106", "status": "Issued", "date": "2026-04-24", "addr": "2601 VICTORY AVE, #FL10, Dallas, TX 75219", "type_work": "Commercial", "gc": "CLUNE CONSTRUCTION COMPANY, L.P.", "job_value": "$19,000,000", "job_value_raw": 19000000.0, "sqft": "92,853", "purpose": "Office", "district": "D2", "zoning": "PD-582", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000304", "status": "Issued", "date": "2026-04-27", "addr": "4114 ADLER DR, Dallas, TX 75211", "type_work": "Commercial  - Shell Only", "gc": "GORDON HIGHLANDER", "job_value": "$2,935,523", "job_value_raw": 2935523.0, "sqft": "75,046", "purpose": "Warehouse", "district": "D1", "zoning": "IM", "zone_priority": 1, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000306", "status": "Issued", "date": "2026-04-27", "addr": "6400 S WESTMORELAND RD, Dallas, TX 75237", "type_work": "Commercial", "gc": "BBLbc LC", "job_value": "$20,318,700", "job_value_raw": 20318700.0, "sqft": "203,187", "purpose": "Retirement housing", "district": "D3", "zoning": "TH-2(A)", "zone_priority": 0, "mf": 0, "source": "Apr 2026", "month": "2026-04"}, {"alt": "COM-NEW-25-000107", "status": "Issued", "date": "2026-04-30", "addr": "4530 GREENVILLE AVE, Dallas, TX 75206", "type_work": "Commercial", "gc": "HM & MF LTD DBA MUCKLEROY & FALLS", "job_value": "$6,000,000", "job_value_raw": 6000000.0, "sqft": "17,260", "purpose": "Office", "district": "D9", "zoning": "MU-3 | MF-1(A)", "zone_priority": 2, "mf": 0, "source": "Apr 2026", "month": "2026-04"}];
+const FIRMS   = [{"id": 1, "name": "BALFOUR BEATTY CONSTRUCTION LLC", "t": "GC", "p": "(214) 468-4700", "phone2": "", "email": "", "address": "3100 Mckinnon, Seven Floor, Dallas, TX 75201", "contact_name": "Jeff Brannen", "license": "BU101258_059552684-002", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 1, "rail": 0, "permit_count": 3, "permits": ["2208261105_173464087-001", "2304111092_177309869-001", "2408271180_192873622-001"]}, {"id": 2, "name": "BBLbc LC", "t": "GC", "p": "(214) 276-0433", "phone2": "", "email": "mderby@bblbuildingco.com", "address": "5160 Tennyson Pkwy Ste 3000E, Plano, TX 75024", "contact_name": "Matt Derby", "license": "BU129361_125417074-002", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000306"]}, {"id": 3, "name": "CLUNE CONSTRUCTION COMPANY, L.P.", "t": "GC", "p": "(312) 726-6103", "phone2": "", "email": "", "address": "10 S Riverside Plaza Ste#2200, Chicago, IL 60606", "contact_name": "David Sitkowski", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 2, "permits": ["COM-NEW-25-000223", "COM-NEW-26-000106"]}, {"id": 4, "name": "D.F. OSBORNE CONSTRUCTION, INC", "t": "GC", "p": "(785) 862-2100", "phone2": "", "email": "permits@osbornecm.com", "address": "3310 Sw Harrison Street, Topeka, KS 66611", "contact_name": "Stephen E. Osborne", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000141"]}, {"id": 5, "name": "GORDON HIGHLANDER", "t": "GC", "p": "(214) 553-6170", "phone2": "", "email": "licensing@gordonhighlander.com", "address": "4464 Sigma Rd, Dallas, TX 75244", "contact_name": "Greg Gordon", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 3, "permits": ["COM-NEW-25-000262", "COM-NEW-25-000302", "COM-NEW-25-000304"]}, {"id": 6, "name": "HCI COMMERCIAL, LLC", "t": "GC", "p": "", "phone2": "", "email": "portals@hcisouthwest.com", "address": "2727 LBJ Freeway Suite 815, Dallas, TX 75234", "contact_name": "Jon Young", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000207"]}, {"id": 7, "name": "HM & MF LTD DBA MUCKLEROY & FALLS", "t": "GC", "p": "(817) 877-3510", "phone2": "", "email": "baustin@muckleroyfalls.com", "address": "3200 Riverfront Dr #200, Fort Worth, TX 76107", "contact_name": "Taylor Hale", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000107"]}, {"id": 8, "name": "JGH, LLC", "t": "GC", "p": "(214) 821-3993", "phone2": "", "email": "jghomesoffice@yahoo.com", "address": "P.O. Box 601715, Dallas, TX 75360", "contact_name": "Gregg Yates", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2412231084_194893795-001"]}, {"id": 9, "name": "MODPLACE BUILDERS LLC", "t": "GC", "p": "(214) 392-9837", "phone2": "", "email": "jason@modplacebuilders.com", "address": "508 W Lookout Dr Suite 14 #89, Richardson, TX 75080", "contact_name": "Jason Kelly", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000186"]}, {"id": 10, "name": "ROCK STRATEGIC", "t": "GC", "p": "(214) 448-8331", "phone2": "", "email": "", "address": "1602 Wynn Joyce Rd, Garland, TX 75049", "contact_name": "Damon Harvey", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000300"]}, {"id": 11, "name": "SALFAI LLC", "t": "GC", "p": "(408) 889-3245", "phone2": "", "email": "salman.anwar@outlook.com", "address": "14079 Sorano Dr, Frisco, TX 75035", "contact_name": "Salman Anwar", "license": "BU101258_059552684-002", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2101211137_163309832-001"]}, {"id": 12, "name": "SPINOFF CONSTRUCTION", "t": "GC", "p": "", "phone2": "", "email": "alan@spinoffconstruction.com", "address": "9488 Cr 4084, Scurry, TX 75158", "contact_name": "Alan Stavinoha", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 2, "permits": ["COM-NEW-25-000241", "COM-NEW-25-000287"]}, {"id": 13, "name": "TALLEY-RIGGINS CONSTRUCTION GROUP LLC", "t": "GC", "p": "(469) 409-1050", "phone2": "", "email": "", "address": "1365 Callistoga Dr, Rockwall, TX 75087", "contact_name": "Doug Talley", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-26-000051"]}, {"id": 14, "name": "URBANX BUILDERS", "t": "GC", "p": "(928) 486-8769", "phone2": "", "email": "marcello@blackarcdevelopment.com", "address": "3313 Shadow Ridge, Grapevine, TX 76051", "contact_name": "Marcello Polidori", "license": "", "web": "", "c": "Dallas", "added": "2026-01-15", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000087"]}, {"id": 15, "name": "EVANS SERVICE COMPANY, LLC", "t": "GC", "p": "", "phone2": "", "email": "", "address": "", "contact_name": "", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 4, "permits": ["COM-NEW-26-000064", "COM-NEW-25-000228", "COM-NEW-25-000275", "COM-NEW-25-000298"]}, {"id": 16, "name": "MCCARTHY-VAUGHN A JOINT VENTURE", "t": "GC", "p": "(314) 581-1226", "phone2": "", "email": "aknoebel@mccarthyvaughn.com", "address": "3400 N Central Expwy Suite 500, Richardson, TX 75080", "contact_name": "Derek Rees", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 2, "permits": ["2406271146_190372374-001", "2406271147_190372379-001"]}, {"id": 17, "name": "WEIS BUILDERS INC", "t": "GC", "p": "(469) 444-6126", "phone2": "", "email": "", "address": "520 E Corporate Drive Suite 500, Lewisville, TX 75057", "contact_name": "Philip Welch", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2407021040_190437220-001"]}, {"id": 18, "name": "LTS MANAGED TECHNICAL SERVICES LLC", "t": "GC", "p": "(945) 599-1568", "phone2": "", "email": "colt.hanks@ledcor.com", "address": "14400 The Lakes Blvd Bldg C Suite 100, Pflugerville, TX 78660", "contact_name": "Colt Hanks", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2410291160_194003972-001"]}, {"id": 19, "name": "NRP CONTRACTORS, LLC", "t": "GC", "p": "(844) 677-0002", "phone2": "", "email": "ccornwell@nrpgroup.com", "address": "2101 N Harwood, Dallas, TX 75201", "contact_name": "Casey Cornwell", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000052"]}, {"id": 20, "name": "JOEL BROWN & CO LLC DBA J.B. & CO LLC", "t": "GC", "p": "(972) 515-3646", "phone2": "", "email": "joel@joelbrownco.com", "address": "3131 McKinney Ave Suite 628, Dallas, TX 75204", "contact_name": "Joel Brown", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000111"]}, {"id": 21, "name": "HEMPHILL LLC", "t": "GC", "p": "(918) 884-7756", "phone2": "", "email": "matt.kline@hemphill.com", "address": "1305 N Louisville Ave, Tulsa, OK 74115", "contact_name": "Matt Kline", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000116"]}, {"id": 22, "name": "RAMPART MULTIFAMILY, INC", "t": "GC", "p": "(817) 310-0053", "phone2": "", "email": "", "address": "4811 Merlot Ave Suite 110, Grapevine, TX 76051", "contact_name": "Craig Cummings", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2302281040_176540256-001"]}, {"id": 23, "name": "MCRT NORTH TEXAS /MOUNTAIN STATES CONST. LLC", "t": "GC", "p": "(214) 682-8748", "phone2": "", "email": "mosborne@mcrtrust.com", "address": "5910 N Central Expy Suite 1100, Dallas, TX 75206", "contact_name": "Rick Michael Osborne", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2310191036_185330657-001"]}, {"id": 24, "name": "DPR CONSTRUCTION", "t": "GC", "p": "(214) 437-9608", "phone2": "", "email": "kevink@dpr.com", "address": "3131 McKinney Ave #200, Dallas, TX 75204", "contact_name": "Jeff Parsons", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2411011020_194053370-001"]}, {"id": 25, "name": "TAURUS COMMERCIAL INC.", "t": "GC", "p": "(972) 243-5444", "phone2": "", "email": "", "address": "12200 Ford Rd Suite 492, Farmers Branch, TX 75243", "contact_name": "Daryl Bowen", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2412131047_194745143-001"]}, {"id": 26, "name": "EVANS GENERAL CONTRACTORS", "t": "GC", "p": "", "phone2": "", "email": "kkey@evans-gc.com", "address": "12747 Fm 740, Forney, TX 75126", "contact_name": "Kenneth Key", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2503041195_198790580-001"]}, {"id": 27, "name": "XPERT DESIGN AND CONSTRUCTION", "t": "GC", "p": "(469) 905-7085", "phone2": "", "email": "amudd@xpertdandc.com", "address": "545 S 3rd Street, Louisville, KY 40208", "contact_name": "Austen Mudd", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000117"]}, {"id": 28, "name": "SOGNI ITALIANI LLC", "t": "GC", "p": "", "phone2": "", "email": "josephatesta@aol.com", "address": "5221 Boxwood Ln, McKinney, TX 75070", "contact_name": "Joseph Testa", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000140"]}, {"id": 29, "name": "DGM BUILDERS", "t": "GC", "p": "", "phone2": "", "email": "dani@dgm-builders.com", "address": "7506 Midbury Drive, Dallas, TX 75230", "contact_name": "Dani Golan", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000265"]}, {"id": 30, "name": "UG CONSTRUCTION LLC DBA CARDINAL CONSTRUCTION", "t": "GC", "p": "(281) 501-8864", "phone2": "", "email": "ratwood@urban-genesis.com", "address": "2215 Lawrence St, Houston, TX 77008", "contact_name": "Rick Atwood", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000274"]}, {"id": 31, "name": "MASTER CODE, INC", "t": "GC", "p": "(817) 648-9576", "phone2": "", "email": "rajsharma@mastercode.us", "address": "7309 Bay Chase Drive, Arlington, TX 76016", "contact_name": "Raj Sharma", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000294"]}, {"id": 32, "name": "HCBeck, LTD", "t": "GC", "p": "(214) 303-6620", "phone2": "", "email": "businesslicense@beckgroup.com", "address": "1601 Elm Street Suite 2800, Dallas, TX 75201", "contact_name": "Jeniece Harper", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000301"]}, {"id": 33, "name": "HORIZON GENERAL CONTRACTORS INC", "t": "GC", "p": "(817) 244-7730", "phone2": "", "email": "ccoomer@horizongc.com", "address": "7315 W Elizabeth Ln, Fort Worth, TX 76116", "contact_name": "Dennis Sisk", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-26-000023"]}, {"id": 34, "name": "LONESTAR BUILDERS", "t": "GC", "p": "", "phone2": "", "email": "hailey@lonestarbuildersinc.com", "address": "2208 West 700 South, Springville, UT 84663", "contact_name": "Dallas Hakes", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2404021187_188808903-001"]}, {"id": 35, "name": "THE CHRISTMAN COMPANY", "t": "GC", "p": "(817) 345-0678", "phone2": "", "email": "ken.norton@christmanco.com", "address": "950 E State Hwy 114 Suite 160, Southlake, TX 76092", "contact_name": "Ken D. Norton", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2407241077_190852126-001"]}, {"id": 36, "name": "LOUISIANA ELECTRIC CO INC", "t": "GC", "p": "", "phone2": "", "email": "", "address": "", "contact_name": "", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["2408141040_192607183-001"]}, {"id": 37, "name": "J & PD LLC", "t": "GC", "p": "(469) 585-8965", "phone2": "", "email": "jeffdowling@att.net", "address": "919 Valencia St, Dallas, TX 75223", "contact_name": "Jeff Dowling", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["2503201043_199071992-001"]}, {"id": 38, "name": "VAL GUTIERREZ DESIGN CONSTRUCTION", "t": "GC", "p": "(979) 618-6610", "phone2": "", "email": "valgutierrez49@gmail.com", "address": "1524 Timber Ridge Dr, Rockwall, TX 75032", "contact_name": "Val Gutierrez", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000033"]}, {"id": 39, "name": "AG CONSTRUCTION GROUP LLC", "t": "GC", "p": "(202) 304-4646", "phone2": "", "email": "ganbarov.anar1977@gmail.com", "address": "507 Timber Lake Dr, Southlake, TX 76092", "contact_name": "Anar Ganbarov", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000129"]}, {"id": 40, "name": "TEXAS BLUE BONNET CONCRETE INC", "t": "GC", "p": "", "phone2": "", "email": "", "address": "", "contact_name": "", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000168"]}, {"id": 41, "name": "ARCADIA BUILDERS", "t": "GC", "p": "(214) 962-0314", "phone2": "", "email": "sam@thearcadiabuilders.com", "address": "101 Audrey Dr, Keller, TX 76248", "contact_name": "Ayaz Mahmood Syed", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 1, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000190"]}, {"id": 42, "name": "RG BRINKMANN COMPANY DBA BRINKMANN CONSTRUCTORS", "t": "GC", "p": "(636) 537-9700", "phone2": "", "email": "nmacdonald@brinkmannconstructors.com", "address": "16650 Chesterfield Rd Suite 100, Chesterfield, MO 63005", "contact_name": "Brian Satterthwaite", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000193"]}, {"id": 43, "name": "CONSTRUCTION CONCEPTS INC", "t": "GC", "p": "", "phone2": "", "email": "", "address": "", "contact_name": "", "license": "", "web": "", "c": "Dallas", "added": "2026-01-01", "mf": 0, "rail": 0, "permit_count": 1, "permits": ["COM-NEW-25-000252"]}];
+
+// ── DATE RANGE STATE ──────────────────────────────────────────────────────
+let DR_FROM = '', DR_TO = '';
+
+function filteredPermits(){
+  return PERMITS.filter(p => {
+    if(DR_FROM && p.date < DR_FROM) return false;
+    if(DR_TO   && p.date > DR_TO)   return false;
+    return true;
+  });
+}
+
+function setRange(range){
+  document.querySelectorAll('.qd').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+  const y = '2026';
+  if(range==='all')  { DR_FROM=''; DR_TO=''; }
+  else if(range==='jan') { DR_FROM=`${y}-01-01`; DR_TO=`${y}-01-31`; }
+  else if(range==='feb') { DR_FROM=`${y}-02-01`; DR_TO=`${y}-02-28`; }
+  else if(range==='mar') { DR_FROM=`${y}-03-01`; DR_TO=`${y}-03-31`; }
+  else if(range==='apr') { DR_FROM=`${y}-04-01`; DR_TO=`${y}-04-30`; }
+  else if(range==='q1')  { DR_FROM=`${y}-01-01`; DR_TO=`${y}-03-31`; }
+  else if(range==='ytd') { DR_FROM=`${y}-01-01`; DR_TO=new Date().toISOString().slice(0,10); }
+  document.getElementById('dr-from').value = DR_FROM;
+  document.getElementById('dr-to').value   = DR_TO;
+  refreshAll();
+}
+
+function applyDateRange(){
+  DR_FROM = document.getElementById('dr-from').value;
+  DR_TO   = document.getElementById('dr-to').value;
+  document.querySelectorAll('.qd').forEach(b=>b.classList.remove('on'));
+  refreshAll();
+}
+
+function refreshAll(){
+  renderSummary();
+  applyPermits();
+  applyGC();
+  updateDateStats();
+}
+
+function updateDateStats(){
+  const fp = filteredPermits();
+  const mf = fp.filter(p=>p.mf).length;
+  const totalVal = fp.reduce((s,p)=>{
+    try{return s+parseFloat(String(p.job_value||'').replace(/[$,]/g,''));}catch{return s;}
+  },0);
+  const valStr = totalVal>=1e9?`$${(totalVal/1e9).toFixed(1)}B`:totalVal>=1e6?`$${(totalVal/1e6).toFixed(0)}M`:'—';
+  const label = DR_FROM&&DR_TO ? `${DR_FROM} → ${DR_TO}` : DR_FROM ? `From ${DR_FROM}` : 'All time';
+  document.getElementById('date-stats').innerHTML =
+    `<span>${label}</span><span><b>${fp.length}</b> permits</span><span><b>${mf}</b> MF</span><span><b>${valStr}</b></span>`;
+}
+
+// ── TAB ───────────────────────────────────────────────────────────────────
+function setTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  btn.classList.add('on');
+  closePanel();
+  if(id==='chat') setTimeout(renderChatList,50);
+  if(id==='summary') renderSummary();
+}
+
+// ── SUMMARY ───────────────────────────────────────────────────────────────
+function renderSummary(){
+  const fp    = filteredPermits();
+  const mfP   = fp.filter(p=>p.mf);
+  const comP  = fp.filter(p=>!p.mf);
+  const priP  = fp.filter(p=>p.zone_priority>0);
+  const hiP   = fp.filter(p=>p.zone_priority===2);
+  let totalVal=0;
+  fp.forEach(p=>{try{totalVal+=parseFloat(String(p.job_value||'').replace(/[$,]/g,''));}catch{}});
+  const valStr=totalVal>=1e9?`$${(totalVal/1e9).toFixed(1)}B`:totalVal>=1e6?`$${(totalVal/1e6).toFixed(0)}M`:'—';
+
+  // KPIs
+  document.getElementById('kpi-row').innerHTML=`
+    <div class="kpi k0"><div class="kpi-val">${fp.length}</div><div class="kpi-lbl">Total permits</div></div>
+    <div class="kpi k1"><div class="kpi-val" style="color:var(--purple)">${mfP.length}</div><div class="kpi-lbl">Multi-family</div></div>
+    <div class="kpi k2"><div class="kpi-val" style="color:var(--green)">${comP.length}</div><div class="kpi-lbl">Commercial</div></div>
+    <div class="kpi k3"><div class="kpi-val" style="color:var(--amber)">${priP.length}</div><div class="kpi-lbl">Priority zones</div></div>
+    <div class="kpi k4"><div class="kpi-val" style="color:var(--accent)">${valStr}</div><div class="kpi-lbl">Total job value</div></div>
+    <div class="kpi k5"><div class="kpi-val" style="color:#0891b2">${FIRMS.length}</div><div class="kpi-lbl">GC firms</div></div>`;
+
+  document.getElementById('tc-sum').textContent = fp.length;
+
+  // Top GCs by value
+  const gcVal={};
+  fp.forEach(p=>{
+    if(!p.gc) return;
+    try{gcVal[p.gc]=(gcVal[p.gc]||0)+parseFloat(String(p.job_value||'').replace(/[$,]/g,''));}catch{}
+  });
+  const topGCs=Object.entries(gcVal).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxV=topGCs[0]?.[1]||1;
+  document.getElementById('sum-gc-bars').innerHTML = topGCs.length
+    ? topGCs.map(([name,val])=>{
+        const pct=Math.round(val/maxV*100);
+        const disp=val>=1e9?`$${(val/1e9).toFixed(1)}B`:val>=1e6?`$${(val/1e6).toFixed(0)}M`:`$${val.toLocaleString()}`;
+        return `<div class="bar-row" onclick="goToGC('${name.replace(/'/g,"\\'")}')">
+          <div class="bar-lbl" title="${name}">${name}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+          <div class="bar-val" style="color:var(--accent)">${disp}</div>
+        </div>`;}).join('')
+    : '<div style="padding:14px;font-size:12px;color:var(--muted)">No job value data in selected range</div>';
+
+  // Priority zones
+  const zc={};
+  fp.forEach(p=>{if(p.zone_priority>0&&p.zoning){const z=p.zoning.split(/[,|+]/)[0].trim();zc[z]=(zc[z]||0)+1;}});
+  const zones=Object.entries(zc).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('sum-zones').innerHTML = zones.length
+    ? zones.map(([z,cnt])=>`
+      <div class="bar-row">
+        <div style="display:flex;align-items:center;gap:7px;width:160px">
+          <span class="zone-high">${z}</span>
+          <span style="font-size:11px;color:var(--muted)">${cnt} permit${cnt>1?'s':''}</span>
+        </div>
+        <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:${Math.round(cnt/priP.length*100)}%;background:#fbbf24"></div></div>
+        <div style="font-size:11px;font-weight:600;color:var(--amber);width:30px;text-align:right">${cnt}</div>
+      </div>`).join('')
+    : '<div style="padding:14px;font-size:12px;color:var(--muted)">No priority zones in selected range</div>';
+
+  // Monthly breakdown
+  const months=['Jan 2026','Feb 2026','Mar 2026','Apr 2026'];
+  const monthColors={'Jan 2026':'#3b82f6','Feb 2026':'#8b5cf6','Mar 2026':'#10b981','Apr 2026':'#f59e0b'};
+  const mStats=months.map(m=>{
+    const mp=PERMITS.filter(p=>p.source===m);
+    const inRange=fp.filter(p=>p.source===m);
+    return {m,total:mp.length,inRange:inRange.length,mf:inRange.filter(p=>p.mf).length,
+      val:inRange.reduce((s,p)=>{try{return s+parseFloat(String(p.job_value||'').replace(/[$,]/g,''));}catch{return s;}},0)};
+  });
+  const maxCnt=Math.max(...mStats.map(s=>s.total),1);
+  document.getElementById('sum-monthly').innerHTML = `
+    <div style="margin-bottom:10px">${mStats.map(s=>`
+      <div class="bar-row" style="cursor:default">
+        <div class="bar-lbl">${s.m}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(s.inRange/maxCnt*100)}%;background:${monthColors[s.m]}"></div></div>
+        <div style="font-size:11px;width:80px;text-align:right;color:var(--muted)">
+          <b style="color:var(--text)">${s.inRange}</b> permits · <span style="color:#1d4ed8">${s.mf} MF</span>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="padding:9px 12px;background:var(--surface2);border-radius:7px;font-size:11px;color:var(--muted)">
+      <b style="color:var(--text)">All time total:</b> ${PERMITS.length} permits · ${PERMITS.filter(p=>p.mf).length} MF · ${PERMITS.filter(p=>!p.mf).length} Commercial
+    </div>`;
+
+
+}
+
+// ── PERMITS ───────────────────────────────────────────────────────────────
+function applyPermits(){
+  const q  = (document.getElementById('pm-q')?.value||'').toLowerCase();
+  const tp = document.getElementById('pm-type')?.value||'';
+  const zf = document.getElementById('pm-zone')?.value||'';
+  const mf = document.getElementById('pm-month')?.value||'';
+  const fp = filteredPermits();
+  const filtered = fp.filter(p=>{
+    if(tp && !p.type_work.toLowerCase().includes(tp.toLowerCase())) return false;
+    if(mf && p.source !== mf) return false;
+    if(q && !p.alt.toLowerCase().includes(q) && !p.addr.toLowerCase().includes(q) && !(p.gc||'').toLowerCase().includes(q)) return false;
+    if(zf==='priority' && p.zone_priority===0) return false;
+    else if(zf && zf!=='priority' && !(p.zoning||'').includes(zf)) return false;
+    return true;
+  });
+  const P = applySort(filtered);
+  lastFilteredPermits = P;
+  renderPermits(P);
+  document.getElementById('tc-pm').textContent = P.length;
+}
+function clearPermits(){
+  ['pm-q','pm-type','pm-zone','pm-month'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  applyPermits();
+}
+function renderPermits(list){
+  const tb = document.getElementById('pm-tb');
+  if(!list.length){
+    tb.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:2rem">No permits match filters.</td></tr>';
+    document.getElementById('pm-ft').innerHTML='<span></span><span></span>';
+    return;
+  }
+  tb.innerHTML = list.map(p=>{
+    const zoneCls = p.zone_priority===2?'zone-high':p.zone_priority===1?'zone-med':'zone-std';
+    const typePill = p.mf?'<span class="pill p-mf">MF</span>':'<span class="pill p-com">COM</span>';
+    const gcLink = p.gc
+      ? `<span style="color:var(--accent);cursor:pointer;font-weight:500" onclick="jumpToGC('${p.gc.replace(/'/g,"\\'")}'">${p.gc}</span>`
+      : '—';
+    return `<tr>
+      <td style="font-family:'DM Mono';font-size:10px;color:var(--accent)">${p.alt}</td>
+      <td><span class="month-badge">${p.source||''}</span></td>
+      <td><span class="pill p-issued">Issued</span></td>
+      <td style="color:var(--muted);white-space:nowrap">${p.date}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.addr}">${p.addr}</td>
+      <td>${typePill}</td>
+      <td>${gcLink}</td>
+      <td style="color:var(--muted);text-align:right;white-space:nowrap">${p.job_value||'—'}</td>
+      <td style="color:var(--muted);text-align:right;white-space:nowrap">${p.sqft||'—'}</td>
+      <td>${p.zoning?`<span class="${zoneCls}" onclick="window.open('https://dallas.gov/departments/sustainabledevelopment/planning/Pages/zoning-districts.aspx','_blank')" style="cursor:pointer">${p.zoning}</span>`:'—'}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.purpose||'—'}</td>
+    </tr>`;
+  }).join('');
+  const priCnt = list.filter(p=>p.zone_priority>0).length;
+  const sortLabel = sortDir===1?'↑ asc':'↓ desc';
+  document.getElementById('pm-ft').innerHTML=`
+    <span>${list.length} permits · ${priCnt} in priority zones ⭐ · sorted by ${sortCol.replace('job_value_raw','job value').replace('sqft_raw','sq.ft').replace('type_work','type').replace('source','month')} ${sortLabel}</span>
+    <span style="color:var(--muted)">Click column headers to sort · Priority: MU-3 · MF-2 · PD-1012 · PD-1060 · PD-1061</span>`;
+}
+
+function jumpToGC(name){
+  document.querySelectorAll('.tnav')[2].click();
+  setTimeout(()=>{
+    document.getElementById('gc-q').value=name;
+    applyGC();
+    const f=FIRMS.find(x=>x.name.toUpperCase()===name.toUpperCase()||name.toUpperCase().includes(x.name.toUpperCase()));
+    if(f) setTimeout(()=>showFirmPanel(f.id),200);
+  },100);
+}
+
+// ── GC FIRMS ──────────────────────────────────────────────────────────────
+function applyGC(){
+  const q  = (document.getElementById('gc-q')?.value||'').toLowerCase();
+  const tp = document.getElementById('gc-type')?.value||'';
+  const ct = document.getElementById('gc-contact')?.value||'';
+  const F  = FIRMS.filter(f=>{
+    if(q && !f.name.toLowerCase().includes(q) && !(f.email||'').toLowerCase().includes(q) && !(f.p||'').includes(q)) return false;
+    if(tp==='mf' && !f.mf) return false;
+    if(tp==='com' && f.mf) return false;
+    if(ct==='phone' && !f.p) return false;
+    if(ct==='email' && !f.email) return false;
+    if(ct==='both' && (!f.p||!f.email)) return false;
+    return true;
+  });
+  renderGC(F);
+  document.getElementById('tc-gc').textContent = F.length;
+}
+function clearGC(){
+  ['gc-q','gc-type','gc-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  applyGC();
+}
+function renderGC(list){
+  const tb = document.getElementById('gc-tb');
+  if(!list.length){
+    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:2rem">No GC firms match.</td></tr>';
+    document.getElementById('gc-ft').innerHTML='<span></span><span></span>';
+    return;
+  }
+  tb.innerHTML = list.map(f=>{
+    const pp = pipeline[f.id];
+    const stageBadge = pp
+      ? `<span class="stage ${STAGE_BADGE[pp.stage]||'s-new'}" onclick="event.stopPropagation();showStageMenu(${f.id},event)">${STAGE_EMOJI[pp.stage]||'🆕'} ${STAGES[pp.stage]||'New'} ▾</span>`
+      : `<button class="bg-btn btn-sm" onclick="event.stopPropagation();addToPipeline(${f.id})" style="font-size:9px">+ Track</button>`;
+    const permitCnt = (f.permits||[]).length || f.permit_count || 0;
+    const hasContacts = f.contacts&&(f.contacts.estimator?.name||f.contacts.pm?.name);
+    return `<tr style="cursor:pointer" onclick="showFirmPanel(${f.id})">
+      <td><div class="av">${ini(f.name)}</div></td>
+      <td>
+        <div style="font-size:12px;font-weight:600">${f.name}</div>
+        ${hasContacts?'<span style="display:inline-block;width:6px;height:6px;background:#10b981;border-radius:50%;margin-top:3px" title="Contacts collected"></span>':''}
+      </td>
+      <td>${f.p?`<a class="alink" href="tel:${f.p}" onclick="event.stopPropagation()">${f.p}</a>`:`<span style="font-size:10px;color:#9ca3af;font-style:italic">pending</span>`}</td>
+      <td style="font-size:11px;color:var(--muted)">${f.license_type||'General Contractor'}</td>
+      <td>${f.email?`<a class="alink" href="mailto:${f.email}" onclick="event.stopPropagation()">${f.email}</a>`:`<span style="font-size:10px;color:#9ca3af;font-style:italic">pending</span>`}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.address||`<span style="font-size:10px;color:#9ca3af;font-style:italic">pending</span>`}</td>
+      <td style="font-size:12px;color:var(--muted)">${f.contact_name||`<span style="font-size:10px;color:#9ca3af;font-style:italic">pending</span>`}</td>
+      <td style="text-align:center">
+        ${permitCnt?`<span style="font-size:11px;font-weight:600;color:var(--accent)">${permitCnt}</span>`:'—'}
+      </td>
+      <td>${stageBadge}</td>
+      <td style="white-space:nowrap">
+        <button class="bg-btn btn-sm" style="margin-right:3px" title="Contacts" onclick="event.stopPropagation();openCF(${f.id})">👤</button>
+        <button class="bg-btn btn-sm" style="margin-right:3px" title="Research" onclick="event.stopPropagation();showFirmPanel(${f.id})">🔍</button>
+        <button class="bg-btn btn-sm" title="Email" onclick="event.stopPropagation();openEmail(${f.id})">✉</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('gc-ft').innerHTML=`<span>${list.length} of ${FIRMS.length} GC firms</span><span style="color:var(--muted)">👤 contacts · 🔍 research · ✉ email · click row for profile</span>`;
+}
+
+// ── SIDE PANEL ────────────────────────────────────────────────────────────
+function showFirmPanel(id){
+  const f=FIRMS.find(x=>x.id===id); if(!f)return;
+  activeFirm=f;
+  document.getElementById('sp-title').textContent=f.name;
+  const ne=encodeURIComponent(f.name);
+  const pp=pipeline[f.id];
+  const firmPermits=PERMITS.filter(p=>(p.gc||'').toUpperCase()===f.name.toUpperCase());
+  document.getElementById('sp-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div class="av" style="width:40px;height:40px;font-size:13px">${ini(f.name)}</div>
+      <div>
+        <div style="font-size:14px;font-weight:600">${f.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">
+          ${f.mf?'<span class="pill p-mf">Multi-family</span>':'<span class="pill p-com">Commercial</span>'}
+          ${firmPermits.length?`<span style="font-size:10px;color:var(--accent);margin-left:5px">${firmPermits.length} permit(s)</span>`:''}
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;padding:9px 11px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px">
+      <div style="font-size:9px;font-weight:700;color:#065f46;text-transform:uppercase;margin-bottom:5px">On file</div>
+      ${f.p?`<div style="font-size:12px;margin-bottom:2px">📞 <a href="tel:${f.p}" class="alink">${f.p}</a></div>`:''}
+      <div style="font-size:11px;color:var(--muted);margin-bottom:2px">🪪 ${f.license_type||'General Contractor'}${f.license?' · '+f.license:''}</div>
+      ${f.email?`<div style="font-size:12px;margin-bottom:2px">✉ <a href="mailto:${f.email}" class="alink">${f.email}</a></div>`:''}
+      ${f.contact_name?`<div style="font-size:12px">👤 ${f.contact_name}</div>`:''}
+      ${f.address?`<div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ${f.address}</div>`:''}
+      ${!f.p&&!f.email&&!f.contact_name?`<div style="font-size:11px;color:var(--muted)">No contact info on file</div>`:''}
+    </div>
+    ${firmPermits.length?`<div style="margin-bottom:10px;padding:9px 11px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Active permits</div>
+      ${firmPermits.map(p=>`<div style="font-size:11px;margin-bottom:3px;display:flex;justify-content:space-between">
+        <span style="color:var(--accent);font-family:'DM Mono'">${p.alt}</span>
+        <span style="color:var(--muted)">${p.source}</span>
+        <span>${p.type_work}</span>
+        <span style="color:var(--muted)">${p.job_value||'—'}</span>
+      </div>`).join('')}
+    </div>`:''}
+    <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Research</div>
+    ${[
+      {i:'🔵',l:'LinkedIn — Company',s:'Official profile',u:`https://www.linkedin.com/search/results/companies/?keywords=${ne}`,c:'#0077b5'},
+      {i:'🔵',l:'LinkedIn — Estimator/PM',s:'People search Dallas',u:`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(f.name+' estimator Dallas')}`,c:'#0077b5'},
+      {i:'🌐',l:'Company website',s:'Contact page + email',u:`https://www.google.com/search?q=${ne}+official+website+contact`,c:'#2563eb'},
+      {i:'🔍',l:'Google — phone + email',s:'Direct contact info',u:`https://www.google.com/search?q=${ne}+Dallas+phone+email`,c:'#2563eb'},
+    ].map(l=>`<a href="${l.u}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;text-decoration:none;color:var(--text);margin-bottom:5px;font-size:12px" onmouseover="this.style.borderColor='${l.c}'" onmouseout="this.style.borderColor='var(--border)'">
+      <span>${l.i}</span><div><div style="font-weight:500">${l.l}</div><div style="font-size:10px;color:var(--muted)">${l.s}</div></div><span style="margin-left:auto;color:var(--muted)">↗</span></a>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:10px">
+      ${!pp?`<button class="btn btn-sm" style="flex:1;background:var(--green)" onclick="addToPipeline(${f.id});closePanel()">+ Pipeline</button>`
+           :`<span class="stage ${STAGE_BADGE[pp.stage]}" style="flex:1;justify-content:center;padding:6px" onclick="showStageMenu(${f.id},event)">${STAGE_EMOJI[pp.stage]} ${STAGES[pp.stage]} ▾</span>`}
+      <button class="btn btn-sm" style="flex:1" onclick="openEmail(${f.id})">✉ Email</button>
+      <button class="btn btn-sm" style="flex:1;background:var(--purple)" onclick="openCF(${f.id})">👤 Contacts</button>
+    </div>`;
+  document.getElementById('side-panel').classList.add('open');
+}
+function closePanel(){document.getElementById('side-panel').classList.remove('open');}
+
+function goToGC(name){
+  document.querySelectorAll('.tnav')[1].click();
+  setTimeout(()=>{document.getElementById('gc-q').value=name;applyGC();},100);
+}
+
+// ── PIPELINE ──────────────────────────────────────────────────────────────
+function addToPipeline(firmId){
+  const f=FIRMS.find(x=>x.id===firmId); if(!f||pipeline[firmId]) return;
+  pipeline[firmId]={firmId,stage:'new',notes:'',updated:new Date().toLocaleDateString()};
+  renderGC(FIRMS); updatePipelineBadge();
+}
+function updatePipelineBadge(){
+  document.getElementById('tc-chat').textContent=Object.keys(pipeline).length||FIRMS.length;
+}
+function showStageMenu(firmId,e){
+  e.stopPropagation();
+  const menu=document.getElementById('stage-menu');
+  menu.innerHTML=Object.entries(STAGES).map(([key,label])=>
+    `<div class="stage-opt" onclick="setStage(${firmId},'${key}')">${STAGE_EMOJI[key]} ${label}</div>`).join('');
+  menu.style.display='block';
+  menu.style.left=Math.min(e.clientX,window.innerWidth-200)+'px';
+  menu.style.top=e.clientY+'px';
+  setTimeout(()=>document.addEventListener('click',()=>{menu.style.display='none';},{once:true}),0);
+}
+function setStage(firmId,stage){
+  if(!pipeline[firmId]) pipeline[firmId]={firmId,stage,notes:'',updated:''};
+  pipeline[firmId].stage=stage;
+  pipeline[firmId].updated=new Date().toLocaleDateString();
+  document.getElementById('stage-menu').style.display='none';
+  renderGC(FIRMS); renderChatList(); renderSummary();
+}
+document.addEventListener('click',()=>{const m=document.getElementById('stage-menu');if(m)m.style.display='none';});
+
+// ── EMAIL ─────────────────────────────────────────────────────────────────
+function openEmail(id){
+  activeFirm=FIRMS.find(f=>f.id===id); if(!activeFirm)return;
+  document.getElementById('email-title').textContent=`Draft email — ${activeFirm.name}`;
+  document.getElementById('e-toname').value=activeFirm.name;
+  document.getElementById('e-toemail').value=activeFirm.email||activeFirm.contacts?.estimator?.email||'';
+  document.getElementById('e-proj').value='';
+  rebuildEmail();
+  document.getElementById('email-modal').classList.add('show');
+}
+function rebuildEmail(){
+  if(!activeFirm)return;
+  const n=document.getElementById('e-name').value||'[Your Name]';
+  const ti=document.getElementById('e-title').value||'Sales Representative';
+  const co=document.getElementById('e-co').value||'[Your Company]';
+  const ph=document.getElementById('e-ph').value||'[Your Phone]';
+  const pr=document.getElementById('e-proj').value;
+  const prL=pr?`\n\nRegarding your project at ${pr}.`:'';
+  const firmPermits=PERMITS.filter(p=>(p.gc||'').toUpperCase()===activeFirm.name.toUpperCase());
+  const permitRef=firmPermits.length?` (permit ${firmPermits.map(p=>p.alt).slice(0,2).join(', ')})`:' ';
+  document.getElementById('e-body').value=`Dear ${activeFirm.name} Team,
+
+I hope this finds you well. My name is ${n}, ${ti} at ${co}.
+
+I came across ${activeFirm.name} while reviewing active GC firms on commercial and multi-family projects in Dallas${permitRef}.${prL}
+
+We specialise in Div 05 decorative metal railings, guards, and handrails. Our products meet We've completed similar scope on numerous DFW projects.
+
+Are you currently accepting bids on Div 05 for any upcoming projects? I'd love to get our specifications in front of your estimating team.
+
+Best regards,
+${n} | ${ti}
+${co} | ${ph}`;
+}
+function sendEmail(){
+  const to=document.getElementById('e-toemail').value;
+  const bd=document.getElementById('e-body').value;
+  const fr=document.getElementById('e-from').value;
+  window.open(`mailto:${to}?subject=${encodeURIComponent('Div 05 Railings — Partnership Opportunity')}&body=${encodeURIComponent(bd)}`);
+}
+function closeEmail(){document.getElementById('email-modal').classList.remove('show');activeFirm=null;}
+
+// ── CONTACT FORM ──────────────────────────────────────────────────────────
+function openCF(firmId){
+  const f=FIRMS.find(x=>x.id===firmId); if(!f)return;
+  activeFirm=f;
+  const c=f.contacts||{};
+  document.getElementById('cf-title').textContent=`GC Contacts — ${f.name}`;
+  document.getElementById('cf-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="grid-column:1/-1;background:var(--surface2);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Company</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>Company name</label><input id="cf-co" value="${f.name}"></div>
+          <div class="fg"><label>Phone (LP Business)</label><input id="cf-ph" value="${f.p||''}" placeholder="Phone 1 or 2"></div>
+          <div class="fg"><label>Address</label><input id="cf-addr" value="${f.address||''}"></div>
+          <div class="fg"><label>Website</label><input id="cf-web" value="${f.web||''}"></div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;border-top:3px solid var(--purple)">
+        <div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;margin-bottom:8px">Estimator</div>
+        <div class="fg"><label>Name</label><input id="cf-est-name" value="${c.estimator?.name||''}"></div>
+        <div class="fg"><label>Email</label><input type="email" id="cf-est-email" value="${c.estimator?.email||''}"></div>
+        <div class="fg"><label>Phone</label><input id="cf-est-phone" value="${c.estimator?.phone||''}"></div>
+        <div class="fg"><label>LinkedIn</label><input id="cf-est-li" value="${c.estimator?.linkedin||''}"></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;border-top:3px solid var(--accent)">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px">Project Manager</div>
+        <div class="fg"><label>Name</label><input id="cf-pm-name" value="${c.pm?.name||''}"></div>
+        <div class="fg"><label>Email</label><input type="email" id="cf-pm-email" value="${c.pm?.email||''}"></div>
+        <div class="fg"><label>Phone</label><input id="cf-pm-phone" value="${c.pm?.phone||''}"></div>
+        <div class="fg"><label>LinkedIn</label><input id="cf-pm-li" value="${c.pm?.linkedin||''}"></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;border-top:3px solid var(--green)">
+        <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:8px">Purchasing</div>
+        <div class="fg"><label>Name</label><input id="cf-pur-name" value="${c.purchasing?.name||''}"></div>
+        <div class="fg"><label>Email</label><input type="email" id="cf-pur-email" value="${c.purchasing?.email||''}"></div>
+        <div class="fg"><label>Phone</label><input id="cf-pur-phone" value="${c.purchasing?.phone||''}"></div>
+      </div>
+      <div style="grid-column:1/-1"><div class="fg"><label>Notes</label><textarea id="cf-notes" rows="2">${c.notes||''}</textarea></div></div>
+      <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end">
+        <button class="bg-btn" onclick="closeCF()">Cancel</button>
+        <button class="btn" onclick="saveCF(${f.id})">💾 Save</button>
+      </div>
+    </div>`;
+  document.getElementById('cf-modal').classList.add('show');
+}
+function saveCF(id){
+  const f=FIRMS.find(x=>x.id===id); if(!f)return;
+  f.p=document.getElementById('cf-ph').value.trim()||f.p;
+  f.address=document.getElementById('cf-addr').value.trim()||f.address;
+  f.web=document.getElementById('cf-web').value.trim()||f.web;
+  f.contacts={
+    estimator:{name:document.getElementById('cf-est-name').value.trim(),email:document.getElementById('cf-est-email').value.trim(),phone:document.getElementById('cf-est-phone').value.trim(),linkedin:document.getElementById('cf-est-li').value.trim()},
+    pm:{name:document.getElementById('cf-pm-name').value.trim(),email:document.getElementById('cf-pm-email').value.trim(),phone:document.getElementById('cf-pm-phone').value.trim(),linkedin:document.getElementById('cf-pm-li').value.trim()},
+    purchasing:{name:document.getElementById('cf-pur-name').value.trim(),email:document.getElementById('cf-pur-email').value.trim(),phone:document.getElementById('cf-pur-phone').value.trim()},
+    notes:document.getElementById('cf-notes').value.trim(),
+  };
+  closeCF(); renderGC(FIRMS); alert('✓ Contacts saved for '+f.name);
+}
+function closeCF(){document.getElementById('cf-modal').classList.remove('show');activeFirm=null;}
+
+// ── AI CHATBOX ────────────────────────────────────────────────────────────
+function filterStage(s){stageFilter=s;renderChatList();}
+function renderChatList(){
+  const q=(document.getElementById('chat-search')?.value||'').toLowerCase();
+  const list=document.getElementById('chat-list'); if(!list)return;
+  const filtered=FIRMS.filter(f=>
+    (!q||f.name.toLowerCase().includes(q))&&
+    (!stageFilter||(pipeline[f.id]?.stage||'new')===stageFilter)
+  );
+  list.innerHTML=filtered.map(f=>{
+    const pp=pipeline[f.id];
+    const stage=pp?.stage||'new';
+    return `<div class="gc-card ${activeChatGC?.id===f.id?'active':''}" onclick="selectChatGC(${f.id})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="gc-card-name">${f.name.length>32?f.name.slice(0,32)+'…':f.name}</div>
+        <span class="stage ${STAGE_BADGE[stage]}" style="font-size:8px">${STAGE_EMOJI[stage]} ${STAGES[stage]}</span>
+      </div>
+      <div class="gc-card-meta">${f.contact_name||f.p||'No contact info'}</div>
+      ${chatConvos[f.id]?`<div class="gc-card-meta" style="color:var(--accent)">💬 ${chatConvos[f.id].length} messages</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Stats
+  const total=FIRMS.length, contacted=FIRMS.filter(f=>pipeline[f.id]&&pipeline[f.id].stage!=='new').length;
+  const statEl=document.getElementById('chat-stats');
+  if(statEl) statEl.textContent=`${total} GCs · ${contacted} contacted`;
+  updatePipelineBadge();
+}
+
+function selectChatGC(id){
+  activeChatGC=FIRMS.find(f=>f.id===id); if(!activeChatGC)return;
+  renderChatList();
+  document.getElementById('chat-empty').style.display='none';
+  const ca=document.getElementById('chat-active');
+  ca.style.display='flex'; ca.style.flexDirection='column';
+  document.getElementById('chat-av').textContent=ini(activeChatGC.name);
+  document.getElementById('chat-name').textContent=activeChatGC.name;
+  const pp=pipeline[id];
+  document.getElementById('chat-sub').textContent=
+    `${activeChatGC.contact_name||activeChatGC.p||'No contact'} · ${pp?STAGES[pp.stage]:'New'}`;
+  if(!chatConvos[id]){
+    chatConvos[id]=[];
+    setTimeout(()=>botMsg(chatOpening(activeChatGC)),300);
+  }
+  renderMsgs(); renderQR();
+}
+function chatOpening(f){
+  const fp=PERMITS.filter(p=>(p.gc||'').toUpperCase()===f.name.toUpperCase());
+  const permits=fp.map(p=>`${p.alt} (${p.source} · ${p.type_work}${p.job_value?' · '+p.job_value:''})`).join('\n  ') || 'No permits in current data';
+  return `**${f.name}** profile pulled.\n\n📋 **Permits:**\n  ${permits}\n\n👤 **Contact:** ${f.contact_name||'Not on file'}\n📞 **Phone:** ${f.p||'Not on file'}\n✉ **Email:** ${f.email||'Not on file'}\n📍 **Address:** ${f.address||'Not on file'}\n\n**Recommended:** ${f.email?'Send outreach email':f.p?'Call directly':'Search LinkedIn for estimator'}\n\nWhat would you like to do?`;
+}
+function botMsg(text){
+  if(!activeChatGC)return;
+  if(!chatConvos[activeChatGC.id])chatConvos[activeChatGC.id]=[];
+  chatConvos[activeChatGC.id].push({role:'bot',text,time:now()});
+  renderMsgs();
+}
+function userMsg(text){
+  if(!activeChatGC)return;
+  chatConvos[activeChatGC.id].push({role:'user',text,time:now()});
+  renderMsgs();
+}
+function renderMsgs(){
+  const el=document.getElementById('chat-msgs'); if(!el||!activeChatGC)return;
+  const convos=chatConvos[activeChatGC.id]||[];
+  el.innerHTML=convos.map(m=>`
+    <div class="msg ${m.role}">
+      <div class="msg-av ${m.role==='bot'?'bot-av':'user-av'}">${m.role==='bot'?'AI':'You'}</div>
+      <div>
+        <div class="bubble">${m.text.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px;padding:0 4px">${m.time}</div>
+      </div>
+    </div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function renderQR(){
+  const el=document.getElementById('chat-qr'); if(!el)return;
+  const replies=['Draft outreach email','Qualification questions','LinkedIn message','Phone call script','Mark as contacted','They replied — log it','Schedule follow-up'];
+  el.innerHTML=replies.map(r=>`<button class="qr" onclick="handleQR('${r}')">${r}</button>`).join('');
+}
+async function handleQR(text){
+  userMsg(text);showTyping();
+  try{
+    const reply = await callClaude(text, activeChatGC);
+    removeTyping(); botMsg(reply); renderQR();
+  }catch(e){removeTyping();botMsg('⚠ AI error: '+e.message);}
+}
+// ── CLAUDE API ────────────────────────────────────────────────────────────
+function buildSystemPrompt(f){
+  const fp = PERMITS.filter(p=>(p.gc||'').toUpperCase()===f.name.toUpperCase());
+  const permitDetails = fp.map(p=>
+    `- Permit ${p.alt} | ${p.source} | ${p.type_work} | ${p.addr} | Job value: ${p.job_value||'N/A'} | Zoning: ${p.zoning||'N/A'}`
+  ).join('\n') || 'No permits in current data';
+
+  return `You are an expert sales outreach assistant helping a railing and deck sales team identify and reach out to General Contractors (GCs) in Dallas TX who may need railing and deck quotes on their construction projects.
+
+You are currently helping with outreach to this specific GC:
+
+COMPANY: ${f.name}
+CONTACT NAME: ${f.contact_name||'Not on file'}
+PHONE: ${f.p||'Not on file'}
+EMAIL: ${f.email||'Not on file'}
+ADDRESS: ${f.address||'Not on file'}
+PROJECT TYPE: ${f.mf?'Multi-family':'Commercial'}
+
+ACTIVE PERMITS:
+${permitDetails}
+
+Your job is to help the sales rep with:
+1. Drafting personalised outreach emails that reference the specific permit number and address
+2. Writing LinkedIn messages (under 300 chars)
+3. Creating phone call scripts
+4. Generating qualification questions to scope the railing opportunity
+5. Logging pipeline activity and suggesting next steps
+
+Always reference specific permit numbers and addresses in outreach messages.
+Keep emails professional, concise and focused on offering value.
+When drafting emails, use placeholders like [Your Name], [Your Company], [Your Phone] for the sender details.
+Format responses clearly with headers where helpful.`;
+}
+
+async function callClaude(userInput, f){
+  const apiKey = document.getElementById('api-key-input')?.value?.trim();
+  if(!apiKey){
+    // Fall back to local responses if no API key
+    return chatResponse(userInput, f);
+  }
+
+  const convos = chatConvos[f.id] || [];
+  // Build message history (last 10 messages for context)
+  const history = convos.slice(-10).map(m=>({
+    role: m.role === 'bot' ? 'assistant' : 'user',
+    content: m.text.replace(/<[^>]+>/g,'') // strip HTML
+  }));
+
+  // Add current message
+  history.push({role:'user', content: userInput});
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: buildSystemPrompt(f),
+      messages: history,
+    })
+  });
+
+  if(!resp.ok){
+    const err = await resp.json().catch(()=>({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  const text = data.content?.map(c=>c.text||'').join('') || '(no response)';
+
+  // Auto-update pipeline stage based on AI response content
+  const lower = text.toLowerCase();
+  if(lower.includes('marked as contacted')||lower.includes('stage → contacted')) setStage(f.id,'contacted');
+  else if(lower.includes('marked as replied')||lower.includes('stage → replied')) setStage(f.id,'replied');
+  else if(lower.includes('marked as qualified')||lower.includes('quote requested')) setStage(f.id,'qualified');
+
+  return text;
+}
+
+async function sendChat(){
+  const el=document.getElementById('chat-input'); if(!el||!activeChatGC)return;
+  const text=el.value.trim(); if(!text)return;
+  el.value='';
+  userMsg(text);
+  showTyping();
+  try {
+    const reply = await callClaude(text, activeChatGC);
+    removeTyping();
+    botMsg(reply);
+  } catch(e) {
+    removeTyping();
+    botMsg('⚠ AI unavailable — ' + e.message);
+  }
+}
+function chatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
+function showTyping(){
+  const el=document.getElementById('chat-msgs'); if(!el)return;
+  const d=document.createElement('div');d.id='typing';d.className='msg bot';
+  d.innerHTML='<div class="msg-av bot-av">AI</div><div class="bubble typing"><span></span><span></span><span></span></div>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+function updateChatStage(stage){if(activeChatGC){setStage(activeChatGC.id,stage);document.getElementById('chat-sub').textContent=`${activeChatGC.contact_name||activeChatGC.p||'No contact'} · ${STAGES[stage]}`;}}
+function generateChatEmail(){if(activeChatGC){openEmail(activeChatGC.id);}}
+
+function chatResponse(input,f){
+  const t=input.toLowerCase();
+  const fp=PERMITS.filter(p=>(p.gc||'').toUpperCase()===f.name.toUpperCase());
+  const permit=fp[0]?.alt||'their permit';
+  const addr=fp[0]?.addr||'their project';
+  const contact=f.contact_name||'[Contact Name]';
+  const email=f.email||'[email not on file]';
+  const phone=f.p||'[phone not on file]';
+
+  if(t.includes('email')||t.includes('draft')||t.includes('outreach')){
+    setStage(f.id,'contacted');
+    return `**Outreach email drafted** (stage → Contacted)\n\n---\n**To:** ${email}\n**Subject:** Div 05 railings — ${addr}\n\nHi ${contact},\n\nI came across ${f.name}'s recent permit (${permit}) and wanted to reach out regarding the railing and deck scope.\n\nWe specialise in Div 05 decorative metal railings for multi-family and commercial projects in Dallas — CSI Sections 05 52 00 and 05 73 00.\n\nAre you currently accepting bids on Div 05 for this project?\n\nBest regards,\n[Your Name] | [Your Company] | [Your Phone]\n\n---\nClick ✉ Email button to open in your email client.`;
+  }
+  if(t.includes('qualification')||t.includes('question')){
+    return `**Qualification questions for ${f.name}:**\n\n1. What is the approximate **linear footage of railing** on this project?\n2. What **stage** is the project — design development, bid ready, or construction?\n3. What is the **target bid date**?\n4. Is there an **approved vendor list** for Div 05, or are you open to new suppliers?\n5. What **material** is specified — aluminium, steel, glass, or cable railing?\n6. Who is the **estimator or PM** handling Div 05?`;
+  }
+  if(t.includes('linkedin')){
+    return `**LinkedIn message for ${contact}:**\n\n---\nHi ${contact}, I noticed ${f.name} recently pulled a permit for a project in Dallas. We supply Div 05 decorative railings for multi-family and commercial projects in the area — would love to connect and see if there's an opportunity to bid on your upcoming work. Happy to send specs or set up a quick call.\n\n---\nKeep under 300 characters for best response rates.`;
+  }
+  if(t.includes('phone')||t.includes('call')||t.includes('script')){
+    return `**Phone call script:**\n\n---\n"Hi, may I speak with ${contact}?\n\nHi ${contact}, this is [Your Name] from [Your Company]. I'm reaching out because ${f.name} recently pulled a permit for a project in Dallas — congratulations.\n\nWe specialise in railings and decks. Are you accepting bids on the railing scope for this project?\n\n[If yes] Great, could I email our specs? What's your email?\n[If not yet] When would be a good time to follow up when you're closer to Div 05 bid phase?"\n\n---\n${phone!=='[phone not on file]'?`📞 Call: **${phone}**`:'⚠ Phone not on file — use email or LinkedIn first'}`;
+  }
+  if(t.includes('contacted')||t.includes('mark')){
+    setStage(f.id,'contacted');
+    return `✓ ${f.name} marked as **Contacted**. Follow up in 5 days if no reply.`;
+  }
+  if(t.includes('replied')||t.includes('log')||t.includes('interested')){
+    setStage(f.id,'replied');
+    return `${f.name} marked as **Replied**. Next step: send qualification questions to scope the railing opportunity. Would you like me to draft that follow-up?`;
+  }
+  if(t.includes('schedule')||t.includes('follow')){
+    return `**Follow-up schedule for ${f.name}:**\n\n📅 Day 1 — Send initial outreach email\n📅 Day 5 — Follow-up if no reply\n📅 Day 10 — Final attempt via phone or LinkedIn\n📅 Day 14 — Mark cold, revisit next month when new permits drop`;
+  }
+  if(t.includes('quote')||t.includes('bid')){
+    setStage(f.id,'qualified');
+    return `${f.name} marked as **Quote Requested**.\n\nAsk ${contact} to send:\n✓ Div 05 specification or railing drawings\n✓ Unit count and number of floors\n✓ Material preference (aluminium, steel, glass, cable)\n✓ Bid due date and delivery schedule\n\nWe'll quote within **3–5 business days** of receiving drawings.`;
+  }
+  return `I can help with outreach for **${f.name}**. Try:\n• "Draft outreach email" — personalised to their permit\n• "Qualification questions" — scope the railing opportunity\n• "LinkedIn message" — connect with ${contact}\n• "Phone call script" — what to say when you call\n• "Mark as contacted" — update pipeline\n• "They replied" — log response`;
+}
+
+function showScript(){
+  document.getElementById('script-content').innerHTML=[
+    {c:'#2563eb',l:'Step 1 — First email (day 1)',t:'Subject: Div 05 railings — [Project address]\n\nHi [Contact], I noticed [GC] recently pulled a permit for [address]. We specialise in railings and decks. Are you accepting bids on the railing scope? Best, [Your Name]'},
+    {c:'#059669',l:'Step 2 — Qualification (on reply)',t:'1. Linear footage of railing?\n2. Project stage — design, bid ready, or construction?\n3. Target bid date?\n4. Approved vendor list for Div 05?\n5. Who handles Div 05 procurement?'},
+    {c:'#d97706',l:'Step 3 — Follow-up (day 5, no reply)',t:'Hi [Contact], following up on Div 05 railings for [address]. Happy to share references and lead times. 15-minute call this week?'},
+    {c:'#7c3aed',l:'Step 4 — Quote request',t:'Please send: railing drawings or Div 05 spec, unit count, material preference, bid due date.\nWe quote within 3–5 business days of receiving drawings.'},
+  ].map(s=>`<div style="padding:12px 14px;background:var(--surface2);border-radius:8px;border-left:3px solid ${s.c}">
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">${s.l}</div>
+    <div style="font-size:12px;line-height:1.7;white-space:pre-wrap">${s.t}</div>
+  </div>`).join('');
+  document.getElementById('script-modal').classList.add('show');
+}
+function copyScript(){navigator.clipboard.writeText('Outreach script copied').then(()=>alert('Script copied to clipboard'));}
+
+// ── EXPORTS ───────────────────────────────────────────────────────────────
+function dlCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download=name;a.click();
+}
+function exportFirmsCSV(){
+  dlCSV([['Company','Phone 1','Phone 2','Email','Address','Contact Name','Permits','Added'],
+    ...FIRMS.map(f=>[f.name,f.p||'',f.phone2||'',f.email||'',f.address||'',f.contact_name||'',(f.permits||[]).length||f.permit_count||0,f.added||''])
+  ],'dallas_gc_firms.csv');
+}
+function exportContactsCSV(){
+  dlCSV([['Company','Phone','Email','Address','Estimator Name','Estimator Email','Estimator Phone','PM Name','PM Email','Purchasing Name','Notes'],
+    ...FIRMS.map(f=>{const c=f.contacts||{},e=c.estimator||{},p=c.pm||{},u=c.purchasing||{};
+      return[f.name,f.p||'',f.email||'',f.address||'',e.name||'',e.email||'',e.phone||'',p.name||'',p.email||'',u.name||'',c.notes||''];})
+  ],'dallas_gc_contacts.csv');
+}
+function exportPipelineCSV(){
+  dlCSV([['Company','Phone','Email','Stage','Contact','Notes','Updated'],
+    ...Object.values(pipeline).map(pp=>{const f=FIRMS.find(x=>x.id===pp.firmId)||{};
+      return[f.name||'',f.p||'',f.email||'',STAGES[pp.stage]||'',pp.contact||'',pp.notes||'',pp.updated||''];})
+  ],'dallas_pipeline.csv');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+// ── SORT STATE ────────────────────────────────────────────────────────────
+let sortCol = 'date';
+let sortDir = -1; // -1 = desc, 1 = asc
+let lastFilteredPermits = [];
+
+function sortPermits(col){
+  if(sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = col==='date'||col==='job_value_raw'||col==='sqft_raw' ? -1 : 1; }
+  applyPermits();
+  // Update sort indicators
+  document.querySelectorAll('[id^="si-"]').forEach(el=>el.textContent='');
+  const el = document.getElementById('si-'+col.replace('_raw','').replace('type_work','type').replace('source','source').replace('job_value_raw','val').replace('sqft_raw','sqft'));
+  if(el) el.textContent = sortDir===1 ? ' ↑' : ' ↓';
+}
+
+function getSortVal(p, col){
+  if(col==='job_value_raw'){
+    try{ return parseFloat(String(p.job_value||'').replace(/[$,]/g,''))||0; }catch{ return 0; }
+  }
+  if(col==='sqft_raw'){
+    try{ return parseInt(String(p.sqft||'').replace(/,/g,''))||0; }catch{ return 0; }
+  }
+  return (p[col]||'').toString().toLowerCase();
+}
+
+function applySort(list){
+  return [...list].sort((a,b)=>{
+    const va=getSortVal(a,sortCol), vb=getSortVal(b,sortCol);
+    if(va<vb) return -sortDir;
+    if(va>vb) return  sortDir;
+    return 0;
+  });
+}
+
+function init(){
+  // Default: all time
+  DR_FROM=''; DR_TO='';
+  document.querySelector('.qd.on')?.classList.remove('on');
+  document.querySelectorAll('.qd')[0].classList.add('on'); // "All time"
+  document.getElementById('dr-from').value='';
+  document.getElementById('dr-to').value='';
+
+  document.getElementById('live-txt').textContent=
+    `${FIRMS.length} GC firms · ${PERMITS.length} permits · Jan–Apr 2026 · $4.67B`;
+  document.getElementById('tc-gc').textContent=FIRMS.length;
+  document.getElementById('tc-pm').textContent=PERMITS.length;
+  document.getElementById('tc-chat').textContent=FIRMS.length;
+
+  updateDateStats();
+  renderSummary();
+  applyPermits();
+  applyGC();
+}
+
+init();
+</script>
+</body>
+</html>
